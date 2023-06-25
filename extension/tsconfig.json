@@ -19,6 +19,14 @@
 		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
 	},
     "exclude": [
-        "node_modules/typedoc/**/*"
-    ]
+        "node_modules/typedoc/**/*",
+        "preview.ts"
+    ],
+    "ts-node": {
+        "esm": true,
+        "compilerOptions": {
+            "target": "es2017",
+            "module": "Node16"
+        }
+    }
 }

@@ -1,26 +1,36 @@
+import * as fs from 'node:fs/promises';
 import * as vscode from 'vscode';
 import * as MarkdownIt from 'markdown-it';
-import { debounce, throttle } from './utils';
-import { typeDocToMarkdown } from './typedoc2md';
+//import { debounce, throttle } from './utils';
+//import type  from 'lodash.debounce';
+//import * as throttle from 'lodash.throttle';
+const throttle = require('lodash.throttle');
+//const debounce = require('lodash.debounce');
+
+
+import { PreviewUpdateMode, convertTypeDocToMarkdown } from './typedoc';
+import path = require('node:path');
+import { asyncDebounce } from './utils';
 
 type VsCodeTheme = 'light' | 'dark';
+
+// let updateCounter = 0;
+// let updateCounterLastDate = 0;
+
+let debouncedUpdatePreview: Function;
+let deb_updatePreviewCursorChanged: Function;
 
 export class ShowPreviewCommand {
     private readonly id = 'typedocLivePreview.showPreview';
     private readonly viewType = 'typedocLivePreview.preview';
 
     private webviewPanel?: vscode.WebviewPanel;
-    private md: MarkdownIt;
     private readonly _extensionUri: vscode.Uri;
     private vsTheme: VsCodeTheme = 'light';
 
-    constructor(private readonly context: vscode.ExtensionContext) {
+    private lastFile = '';
 
-        this.md = new MarkdownIt({
-            html: false,
-            breaks: true,
-            linkify: true,
-        });
+    constructor(private readonly context: vscode.ExtensionContext, private readonly md: MarkdownIt) {
         this._extensionUri = context.extensionUri;
 
         context.subscriptions.push(vscode.commands.registerCommand(this.id, () => this.execute()));
@@ -53,23 +63,56 @@ export class ShowPreviewCommand {
         }, null, this.context.subscriptions);
 
         webviewPanel.onDidChangeViewState(e => {
-            if (this.webviewPanel?.visible) {
-                this.updatePreview();
+            if (this.webviewPanel?.visible && debouncedUpdatePreview) {
+                //this.updatePreview();
+                //debouncedUpdatePreview();
+                deb_updatePreviewCursorChanged();
             }
         });
 
         this.webviewPanel = webviewPanel;
     }
 
-    private async updatePreview(): Promise<void> {
-        const activeEditor = vscode.window.activeTextEditor;
+    private get currentFile(): string {
+        return vscode.window.activeTextEditor?.document?.fileName ?? '';
+    }
 
+    private async updatePreview(): Promise<void> {
+        await this.updatePreviewWindow('content');
+    }
+
+    private async updatePreviewCursorChanged(): Promise<void> {
+        await this.updatePreviewWindow('cursor');
+    }
+
+    private async updatePreviewWindow(updateMode: PreviewUpdateMode): Promise<void> {
+        this.lastFile = this.currentFile;
+        const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor || !this.webviewPanel) { return; }
 
-        const lineNumber = activeEditor.selection.active.line;
+        // updateCounter++;
+        // const now = Date.now();
+        // const updateDelta = updateCounterLastDate === 0 ? 0 : now - updateCounterLastDate;
+        // updateCounterLastDate = now;
 
-        const markdown = await typeDocToMarkdown(activeEditor.document.fileName, lineNumber);
-        const html = this.md.render(markdown);
+        // console.warn(`${this.id}.updateCounter: ${updateCounter }, update delta: ${updateDelta}ms`);
+
+        let html = '';
+        if (this.isSupportedFileOpened()) {
+            const lineNumber = activeEditor.selection.active.line + 1;
+            //const tempfile = vscode.Uri.joinPath(this._extensionUri, 'tmp', 'preview.ts').toString();
+            const originFilename = activeEditor.document.fileName;
+            const tempfile = path.join(this._extensionUri.fsPath, 'preview.ts');
+            await this.saveTempFile(tempfile, activeEditor.document.getText());
+
+            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode);
+            html = this.md.render(markdown);
+        } else {
+            html = `<p><span style="color: red;">Unsupported file <b>${this.lastFile}</b></span>.<br/> Only typescript files are supported</p>`;
+        }
+
+        if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
+
         this.webviewPanel.webview.html = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
     }
 
@@ -80,13 +123,17 @@ export class ShowPreviewCommand {
         return webview.asWebviewUri(diskPath);
     }
 
+    private async saveTempFile(file: string, text: string): Promise<void> {
+        await fs.writeFile(file, text, { encoding: 'utf-8' });
+    }
+
     private wrapHTMLContentInDoc(webview: vscode.Webview, html: string): string {
         const nonce = this.getNonce();
 
-        const idx = html.lastIndexOf('<h2>Source</h2>');
-        if (idx > -1) {
-            html = html.substring(0, idx);
-        }
+        // const idx = html.lastIndexOf('<h2>Source</h2>');
+        // if (idx > -1) {
+        //     html = html.substring(0, idx);
+        // }
         const regex = /<code>/g;
         html = html.replace(regex, '<code class="language-ts">');
 
@@ -137,14 +184,38 @@ export class ShowPreviewCommand {
     }
 
     private registerEvents() {
-        const throttledUpdate = throttle(this.updatePreview.bind(this), 1000);
-        const debouncedUpdate = debounce(this.updatePreview.bind(this), 500);
+        //const throttledUpdate = throttle(this.updatePreview.bind(this), 500);
+        //const debouncedUpdate = debounce(this.updatePreview.bind(this), 500, {leading: false, trailing: true, maxWait: 1000});
+        debouncedUpdatePreview = asyncDebounce(this.updatePreview.bind(this), 500, { leading: false, trailing: true, maxWait: 1000 }) as unknown as Function;
+
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        deb_updatePreviewCursorChanged = asyncDebounce(this.updatePreviewCursorChanged.bind(this), 100, { leading: false, trailing: true, maxWait: 1000 }) as unknown as Function;
+
         this.context.subscriptions.push(
             vscode.workspace.onDidChangeTextDocument(() => {
-                throttledUpdate();
-                debouncedUpdate();
+                //throttledUpdate();
+                // @ts-ignore
+                debouncedUpdatePreview();
             }),
-            vscode.window.onDidChangeActiveTextEditor(() => this.isSupportedFileOpened() && this.updatePreview())
+            vscode.window.onDidChangeActiveTextEditor(e => {
+                //return this.isSupportedFileOpened() && this.updatePreview();
+                // @ts-ignore
+                //return this.isSupportedFileOpened() && debouncedUpdatePreview();
+
+                const supportedFile = this.isSupportedFileOpened();
+                if (!supportedFile || this.currentFile !== this.lastFile) {
+                    this.updatePreview();
+                } else {
+                    debouncedUpdatePreview();
+                }
+
+                //return debouncedUpdatePreview();
+            }),
+
+            vscode.window.onDidChangeTextEditorSelection(() => {
+                //this.updatePreviewCursorChanged();
+                deb_updatePreviewCursorChanged();
+            })
         );
     }
 }
