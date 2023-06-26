@@ -1,41 +1,23 @@
+// testcase: PromiseType|11-14
+// testcase: DateFormat|16-20
+// testcase: LogLevel|22-26
+// testcase: LogMessageFunction|28-33
+// testcase: ILogger|35-38
+// testcase: ILogger_DEBUG|39-42
+// testcase: ILogger_data|44-47
+// testcase: ILogger_log|49-52
+// testcase: TEnumCtor|63-66
+
+/**
+ * Promise like type alias.
+ */
 export type PromiseType = () => Promise<void>;
 
 /**
  * Date format types.
  * 
- * @export
- * @enum {number}
  */
 export type DateFormat = 'date' | 'time' | 'dateTime' | 'iso' | 'fileTimestamp';
-
-export type PromiseMapper<Element = unknown, NewElement = unknown> = (
-    element: Element,
-    index: number
-) => NewElement | Promise<NewElement>;
-
-export interface PromiseMapOptions {
-    /**
-    Number of concurrently pending promises returned by `mapper`.
-
-    Must be an integer from 1 and up or `Infinity`.
-
-    @default Infinity
-    */
-    readonly concurrency?: number;
-
-    /**
-    When set to `false`, instead of stopping when a promise rejects, it will wait for all the promises to settle and then reject with an [aggregated error](https://github.com/sindresorhus/aggregate-error) containing all the errors from the rejected promises.
-
-    @default true
-    */
-    readonly stopOnError?: boolean;
-}
-
-export interface PromiseRetryOptions {
-    interval?: number,
-    max_tries?: number,
-    predicate?: () => boolean;
-}
 
 /**
  * Levels for logging.
@@ -43,8 +25,11 @@ export interface PromiseRetryOptions {
  */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-export interface IDummy {}
-
+/**
+ * Log's message function type.
+ * @param message - message string to log
+ * @param error - optional error object associated with log
+ */
 export type LogMessageFunction = (message: string, error?: Error) => void;
 
 /**
@@ -75,19 +60,8 @@ export type ILogger = {
     logError: LogMessageFunction;
 };
 
-export type ExpireMapItem<V> = {
-    timeout: number;
-    expireTime: number;
-    value: V;
-}
-
-export type ExpireMapItemExpireAction = 'remove' | 'update';
-export type ExpireMapItemExpiredCallbackResult<V> = Partial<Omit<ExpireMapItem<V>, 'expireTime'>> & { expireAction?: ExpireMapItemExpireAction };
-export type ExpireMapItemExpiredCallback<V> = (item: ExpireMapItem<V>) => ExpireMapItemExpiredCallbackResult<V>;
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+/**
+ * interface marker for enums.
+ */
 export interface TEnumConstructor<TEnum> extends Object {
 }
-
-// export type NumericRange<T extends number> = number extends T ? number : _Range<T, []>;
-// type _Range<T extends number, R extends unknown[]> = R['length'] extends T ? R[number] : _Range<T, [R['length'], ...R]>;

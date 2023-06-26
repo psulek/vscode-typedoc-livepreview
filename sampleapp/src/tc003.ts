@@ -1,3 +1,7 @@
+// testcase: class|5-8
+// testcase: run|9-15
+// testcase: vara|18-19
+
 /**
  * ABC class `nice`
  */

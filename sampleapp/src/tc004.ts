@@ -1,3 +1,8 @@
+// testcase: class|8-11
+// testcase: run|13-19
+// testcase: close|21-26
+// testcase: vara|29-30
+
 import { IDummy } from './tc005';
 
 /**
