@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as ts from 'typescript';
-import { Application, DeclarationReflection, PageEvent, Reflection, RenderTemplate, LogLevel, ReflectionKind } from 'typedoc';
+import { Application, DeclarationReflection, PageEvent, Reflection, RenderTemplate, LogLevel, ReflectionKind, ContainerReflection, Comment, SignatureReflection } from 'typedoc';
 import { arraySortBy } from './utils';
 
 export type PreviewUpdateMode = 'content' | 'cursor';
@@ -9,8 +9,8 @@ type DeclarationReflectionInfo = {
     startline: number;
     endline: number;
     model: DeclarationReflection;
-    originModel?: DeclarationReflection;
-    template: RenderTemplate<PageEvent<Reflection>>;
+    comment?: Comment;
+    signatures?: SignatureReflection[];
 };
 
 const lastConversion = {
@@ -77,8 +77,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         const project = app.convert()!;
         const renderer = app.renderer;
         (renderer as any).prepareTheme();
-        const theme = renderer.theme!;
-        const urls = theme.getUrls(project);
 
         const projectSourceFile = app.getEntryPoints()![0].sourceFile!;
         const projectSourceFileName = path.resolve(projectSourceFile.fileName);
@@ -120,89 +118,192 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         };
 
         lastConversion.reflections.length = 0;
-        urls.forEach(mapping => {
-            if (mapping.model instanceof Reflection) {
-                const template = mapping.template;
 
-                // value - line number of constructor
-                const constructors = new Map<DeclarationReflection, number>();
+        // value - line number of constructor
+        const constructors = new Map<DeclarationReflection, number>();
 
-                const recurseChildren = (model: Reflection, originModel?: DeclarationReflection): void => {
-                    if (model instanceof DeclarationReflection && model.sources && model.sources.length > 0) {
-                        const symbol = project.getSymbolFromReflection(model)!;
-                        const modelSources = model.sources[0];
-                        const modelSourcesFileName = path.resolve(modelSources.fullFileName);
-                        if (modelSourcesFileName === sourceFile) {
-                            let valueDeclaration = symbol.valueDeclaration! as any;
-                            if (valueDeclaration === undefined && symbol.declarations && symbol.declarations.length > 0) {
-                                valueDeclaration = symbol.declarations[0];
-                            }
+        const recurseChildren = (parent: ContainerReflection): void => {
+            if (parent.children) {
+                parent.children.forEach(model => {
+                    if (!(model instanceof DeclarationReflection && model.sources && model.sources.length > 0)) {
+                        return;
+                    }
 
-                            let jsDoc = valueDeclaration.jsDoc && valueDeclaration.jsDoc.length > 0 ? valueDeclaration.jsDoc[0] : undefined;
-                            if (jsDoc === undefined) {
-                                jsDoc = findParentJsDoc(valueDeclaration, modelSources.line);
-                            }
+                    const symbol = project.getSymbolFromReflection(model)!;
+                    const modelSources = model.sources[0];
+                    const modelSourcesFileName = path.resolve(modelSources.fullFileName);
+                    if (modelSourcesFileName !== sourceFile) {
+                        return;
+                    }
 
-                            const body = valueDeclaration.body;
+                    let valueDeclaration = symbol.valueDeclaration! as any;
+                    if (valueDeclaration === undefined && symbol.declarations && symbol.declarations.length > 0) {
+                        valueDeclaration = symbol.declarations[0];
+                    }
 
-                            let startline = jsDoc ? getSourceLine(jsDoc.pos) : modelSources.line;
-                            let endline = modelSources.line;
+                    let jsDoc = valueDeclaration.jsDoc && valueDeclaration.jsDoc.length > 0 ? valueDeclaration.jsDoc[0] : undefined;
+                    if (jsDoc === undefined) {
+                        jsDoc = findParentJsDoc(valueDeclaration, modelSources.line);
+                    }
 
-                            let bodyStartLine = 0;
-                            if (body) {
-                                const startPos = jsDoc ? jsDoc.pos : body.pos;
-                                startline = getSourceLine(startPos);
-                                endline = getSourceLine(body.end);
-                                bodyStartLine = getSourceLine(body.pos);
-                            }
+                    const body = valueDeclaration.body;
 
-                            let allowAdd = true;
+                    let startline = jsDoc ? getSourceLine(jsDoc.pos) : modelSources.line;
+                    let endline = modelSources.line;
 
-                            // when property, check if startline is same as startline of constructor of same class, 
-                            // and if so, it means this property was created from constructor 'public' modifier
-                            if (model.kind === ReflectionKind.Property) {
-                                const parentCtor = findConstructor(model);
-                                if (parentCtor && constructors.has(parentCtor)) {
-                                    const propertyDeclareLine = modelSources.line;
-                                    if (constructors.get(parentCtor) === propertyDeclareLine) {
-                                        //startline = endline = propertyDeclareLine;
-                                        allowAdd = false;
-                                    }
-                                }
-                            } else if (model.kind === ReflectionKind.Constructor) {
-                                constructors.set(model, bodyStartLine);
-                            }
+                    let bodyStartLine = 0;
+                    if (body) {
+                        const startPos = jsDoc ? jsDoc.pos : body.pos;
+                        startline = getSourceLine(startPos);
+                        endline = getSourceLine(body.end);
+                        bodyStartLine = getSourceLine(body.pos);
+                    }
 
-                            if (allowAdd) {
-                                lastConversion.reflections.push({ startline, endline, model, template, originModel });
-                            }
+                    let allowAdd = true;
 
-                            const modelIsTypeLiteral = model.kind === ReflectionKind.TypeLiteral;
-                            if (model.children && model.children.length > 0 &&
-                                (validKindForChildren.includes(model.kind) ||
-                                    (modelIsTypeLiteral && model.children?.some(x => x.kind === ReflectionKind.Property)))
-                            ) {
-                                model.children.forEach(child => { recurseChildren(child); });
+                    // when property, check if startline is same as startline of constructor of same class, 
+                    // and if so, it means this property was created from constructor 'public' modifier
+                    if (model.kind === ReflectionKind.Property) {
+                        const parentCtor = findConstructor(model);
+                        if (parentCtor && constructors.has(parentCtor)) {
+                            const propertyDeclareLine = modelSources.line;
+                            if (constructors.get(parentCtor) === propertyDeclareLine) {
+                                allowAdd = false;
                             }
                         }
+                    } else if (model.kind === ReflectionKind.Constructor) {
+                        constructors.set(model, bodyStartLine);
                     }
-                };
 
-                let modelToInspect = mapping.model;
-                let originModel: DeclarationReflection | undefined = undefined;
-                if (mapping.model instanceof DeclarationReflection &&
-                    mapping.model.type?.type === 'reflection' &&
-                    mapping.model.type?.declaration instanceof DeclarationReflection
-                    //&& mapping.model.type.declaration.children?.some(x => x.kind === ReflectionKind.Property)
-                ) {
-                    modelToInspect = mapping.model.type?.declaration;
-                    originModel = mapping.model;
-                }
+                    if (allowAdd) {
+                        let comment = model.comment;
+                        let signatures = model.signatures;
 
-                recurseChildren(modelToInspect, originModel);
-                // recurseChildren(mapping.model);
+                        if ((comment === undefined && (signatures === undefined || signatures.length === 0)) &&
+                            model.type &&
+                            model.type?.type === 'reflection' &&
+                            model.type?.declaration instanceof DeclarationReflection) {
+                            comment = model.type.declaration.comment;
+                            signatures = model.type.declaration.signatures;
+                        }
+
+                        if (comment || (signatures && signatures.length > 0)) {
+                            const name = valueDeclaration?.name?.escapedText;
+                            if (name && name.length > 0) {
+                                model.name = name;
+                            }
+                            lastConversion.reflections.push({ startline, endline, model, comment, signatures }); //, originModel });
+                        }
+                    }
+
+                    let modelToIterate = model;
+                    let iterateChilds = model.children && model.children.length > 0 && validKindForChildren.includes(model.kind);
+                    if ([ReflectionKind.TypeAlias].includes(model.kind) &&
+                        model instanceof DeclarationReflection &&
+                        model.type?.type === 'reflection' &&
+                        model.type?.declaration instanceof DeclarationReflection &&
+                        model.type.declaration.children?.some(x => x.kind === ReflectionKind.Property)
+                    ) {
+                        iterateChilds = true;
+                        modelToIterate = model.type.declaration;
+                    }
+
+                    if (iterateChilds) {
+                        recurseChildren(modelToIterate);
+                    }
+                });
             }
-        });
+        };
+
+        recurseChildren(project);
+
+
+
+
+
+        // urls.forEach(mapping => {
+        //     if (mapping.model instanceof Reflection) {
+        //         const template = mapping.template;
+
+        //         // value - line number of constructor
+        //         const constructors = new Map<DeclarationReflection, number>();
+
+        //         const recurseChildren = (model: Reflection, originModel?: DeclarationReflection): void => {
+        //             if (model instanceof DeclarationReflection && model.sources && model.sources.length > 0) {
+        //                 const symbol = project.getSymbolFromReflection(model)!;
+        //                 const modelSources = model.sources[0];
+        //                 const modelSourcesFileName = path.resolve(modelSources.fullFileName);
+        //                 if (modelSourcesFileName === sourceFile) {
+        //                     let valueDeclaration = symbol.valueDeclaration! as any;
+        //                     if (valueDeclaration === undefined && symbol.declarations && symbol.declarations.length > 0) {
+        //                         valueDeclaration = symbol.declarations[0];
+        //                     }
+
+        //                     let jsDoc = valueDeclaration.jsDoc && valueDeclaration.jsDoc.length > 0 ? valueDeclaration.jsDoc[0] : undefined;
+        //                     if (jsDoc === undefined) {
+        //                         jsDoc = findParentJsDoc(valueDeclaration, modelSources.line);
+        //                     }
+
+        //                     const body = valueDeclaration.body;
+
+        //                     let startline = jsDoc ? getSourceLine(jsDoc.pos) : modelSources.line;
+        //                     let endline = modelSources.line;
+
+        //                     let bodyStartLine = 0;
+        //                     if (body) {
+        //                         const startPos = jsDoc ? jsDoc.pos : body.pos;
+        //                         startline = getSourceLine(startPos);
+        //                         endline = getSourceLine(body.end);
+        //                         bodyStartLine = getSourceLine(body.pos);
+        //                     }
+
+        //                     let allowAdd = true;
+
+        //                     // when property, check if startline is same as startline of constructor of same class, 
+        //                     // and if so, it means this property was created from constructor 'public' modifier
+        //                     if (model.kind === ReflectionKind.Property) {
+        //                         const parentCtor = findConstructor(model);
+        //                         if (parentCtor && constructors.has(parentCtor)) {
+        //                             const propertyDeclareLine = modelSources.line;
+        //                             if (constructors.get(parentCtor) === propertyDeclareLine) {
+        //                                 //startline = endline = propertyDeclareLine;
+        //                                 allowAdd = false;
+        //                             }
+        //                         }
+        //                     } else if (model.kind === ReflectionKind.Constructor) {
+        //                         constructors.set(model, bodyStartLine);
+        //                     }
+
+        //                     if (allowAdd) {
+        //                         lastConversion.reflections.push({ startline, endline, model, template, originModel });
+        //                     }
+
+        //                     const modelIsTypeLiteral = model.kind === ReflectionKind.TypeLiteral;
+        //                     if (model.children && model.children.length > 0 &&
+        //                         (validKindForChildren.includes(model.kind) ||
+        //                             (modelIsTypeLiteral && model.children?.some(x => x.kind === ReflectionKind.Property)))
+        //                     ) {
+        //                         model.children.forEach(child => { recurseChildren(child); });
+        //                     }
+        //                 }
+        //             }
+        //         };
+
+        //         let modelToInspect = mapping.model;
+        //         let originModel: DeclarationReflection | undefined = undefined;
+        //         if (mapping.model instanceof DeclarationReflection &&
+        //             mapping.model.type?.type === 'reflection' &&
+        //             mapping.model.type?.declaration instanceof DeclarationReflection
+        //             //&& mapping.model.type.declaration.children?.some(x => x.kind === ReflectionKind.Property)
+        //         ) {
+        //             modelToInspect = mapping.model.type?.declaration;
+        //             originModel = mapping.model;
+        //         }
+
+        //         recurseChildren(modelToInspect, originModel);
+        //         // recurseChildren(mapping.model);
+        //     }
+        // });
 
         lastConversion.reflections = arraySortBy(lastConversion.reflections, x => x.startline, 'asc');
     }
@@ -230,23 +331,26 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
     if (reflection) {
         //let model = reflection.originModel ?? reflection.model;
         let model = reflection.model;
-        let comment = model.comment;
-        let signatures = model.signatures;
+        let comment = reflection.comment;
+        let signatures = reflection.signatures;
 
-        if ((comment === undefined && (signatures === undefined || signatures.length === 0)) && reflection.originModel) {
-            model = reflection.originModel!;
-            comment = model.comment;
-            signatures = model.signatures;
-        }
+        // let comment = model.comment;
+        // let signatures = model.signatures;
 
-        if ((comment === undefined && (signatures === undefined || signatures.length === 0)) &&
-            model.type &&
-            model.type?.type === 'reflection' &&
-            model.type?.declaration instanceof DeclarationReflection) {
-            model = model.type.declaration;
-            comment = model.comment;
-            signatures = model.signatures;
-        }
+        // if ((comment === undefined && (signatures === undefined || signatures.length === 0)) && reflection.originModel) {
+        //     model = reflection.originModel!;
+        //     comment = model.comment;
+        //     signatures = model.signatures;
+        // }
+
+        // if ((comment === undefined && (signatures === undefined || signatures.length === 0)) &&
+        //     model.type &&
+        //     model.type?.type === 'reflection' &&
+        //     model.type?.declaration instanceof DeclarationReflection) {
+        //     model = model.type.declaration;
+        //     comment = model.comment;
+        //     signatures = model.signatures;
+        // }
 
         const page = new PageEvent(PageEvent.BEGIN, model);
         page.project = model.project;
@@ -260,12 +364,12 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
             const context = (theme as any).getRenderContext(page);
             const md: string[] = [];
 
-            let pageTitle = '';
+            let pageTitle = model.hasOwnDocument ? '' : `${ReflectionKind.singularString(model.kind)}: `;
 
             // @ts-ignore
             //if (model.sources && model.sources.length > 0) {
             if (model.kind !== ReflectionKind.TypeLiteral) {
-                pageTitle = context.memberTitle(page.model, true);
+                pageTitle += context.memberTitle(page.model, true);
             }
             // @ts-ignore
             else if (model.parent && model.parent.sources && model.parent.sources.length > 0 &&

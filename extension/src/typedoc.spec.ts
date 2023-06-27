@@ -24,7 +24,8 @@ async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
-        const filterTests = 'tc005.ts';
+        // const filterTests = 'tc007.ts';
+        const filterTests = '';
 
         const colorNumber = chalk.blueBright;
         const colorFile = chalk.cyan;
@@ -35,21 +36,33 @@ async function main() {
         const totalCount = testCases.length;
         log('Found ' + colorNumber(totalCount) + ' test cases: (' + colorFile(testCases.join(', ')) + ')\n');
 
+        const results = {
+            conversion: {
+                failed: 0,
+                succeed: 0
+            },
+
+            lines: {
+                failed: 0,
+                succeed: 0
+            }
+        };
+
         await promiseEachSeries(testCases, async (testCase, idx) => {
-            if (filterTests && !filterTests.includes(testCase)) {
+            if (filterTests && filterTests !== testCase) {
                 return;
             }
 
-            log(`Processing test case '${colorFile(testCase)}' (${++idx}/${totalCount})`);
-
             const file = path.resolve(dirTestCases, testCase);
+            log(`\n[${++idx}/${totalCount}] Processing test case '${colorFile(file)}'`);
+
             //const lines = await readFileLinesUntil(file, x => x.startsWith(fileHeader) ? 'accept' : 'stop');
             const lines = (await readFileLinesUntil(file, _ => 'accept')).filter(x => x.startsWith(fileHeader));
 
             if (lines.length > 0) {
                 const fileLines = new Map<string, TestCaseLineInfo>();
 
-                await promiseEachSeries(lines, async line => {
+                lines.forEach(line => {
                     const linesToTestStr = line.substring(fileHeader.length).trim();
                     const linesToTest = linesToTestStr.split('|');
                     if (linesToTest.length === 2) {
@@ -72,14 +85,14 @@ async function main() {
 
                 if (fileLines.size > 0) {
                     try {
-                        log(`\nFile '${colorFile(file)}' -> found ` + colorNumber(fileLines.size) + ' line headers for tests!');
+                        log(`\t• found ` + colorNumber(fileLines.size) + ' test case(s)');
 
                         // load all into cache
                         //const md_firstLine = await convertTypeDocToMarkdown(file, file, 1, 'content');
                         await convertTypeDocToMarkdown(file, file, 0, 'content');
                         const baseFileName = path.parse(testCase).name;
 
-                        promiseEachSeries(fileLines.values(), async test => {
+                        await promiseEachSeries(fileLines.values(), async test => {
                             const line_start = test.start;
                             //const md_start = line_start === 1 ? md_firstLine : await convertTypeDocToMarkdown(file, file, line_start, 'cursor');
                             const md_start = await convertTypeDocToMarkdown(file, file, line_start, 'cursor');
@@ -101,8 +114,10 @@ async function main() {
                             } else {
                                 log(`\t• found expected file ` + colorFile(expectedFileBase));
                                 if (md_start === expectedFileContent) {
+                                    results.conversion.succeed ++;
                                     log(`\t• test case '${test.id}' - conversion validity ` + colorSuccess('passed'));
                                 } else {
+                                    results.conversion.failed ++;
                                     const verifiedFileBase = path.join(baseFileName, `${test.id}-verified.md`);
                                     log(`\t• test case '${test.id}' - conversion validity ` + colorError('failed') + `, expected file '` +
                                         colorFile(expectedFileBase) + `' does not match file '` + colorFile(verifiedFileBase) + `'`);
@@ -119,8 +134,10 @@ async function main() {
                                 const md = await convertTypeDocToMarkdown(file, file, line, 'cursor');
                                 if (md === md_start) {
                                     successLines++;
+                                    results.lines.succeed++;
                                 } else {
                                     failedLines.push(line);
+                                    results.lines.failed++;
                                 }
                             }
 
@@ -140,6 +157,21 @@ async function main() {
                 log(colorWarn(`File '${file}' is not valid test case file, missing header '${fileHeader}' lines.\n`));
             }
         });
+
+        log(`\n`);
+        if (results.conversion.failed > 0) {
+            log(colorNumber(results.conversion.failed) + ` conversion tests ${colorError('failed')}.`);
+        } else {
+            log('All ' + colorNumber(results.conversion.succeed) + ` conversions tests ${colorSuccess('passed')}.`);
+        }
+
+        if (results.lines.failed > 0) {
+            log(colorNumber(results.lines.failed) + ` conversion lines tests ${colorError('failed')}.`);
+        } else {
+            log('All ' + colorNumber(results.lines.succeed) + ` conversion lines tests ${colorSuccess('passed')}.`);
+        }
+
+        log(`\n`);
     } catch (error) {
         log(colorError(error));
     }

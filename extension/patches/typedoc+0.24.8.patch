@@ -1,0 +1,82 @@
+diff --git a/node_modules/typedoc/dist/lib/converter/converter.js b/node_modules/typedoc/dist/lib/converter/converter.js
+index befd6eb..8a8e2ef 100644
+--- a/node_modules/typedoc/dist/lib/converter/converter.js
++++ b/node_modules/typedoc/dist/lib/converter/converter.js
+@@ -368,7 +368,7 @@ function getSymbolForModuleLike(context, node) {
+         globalSymbols[0]
+             .getDeclarations()
+             ?.every((declaration) => typescript_1.default.isModuleDeclaration(declaration) &&
+-            typescript_1.default.isStringLiteral(declaration.name))) {
++                typescript_1.default.isStringLiteral(declaration.name))) {
+         return globalSymbols[0];
+     }
+ }
+@@ -377,6 +377,17 @@ function getExports(context, node, symbol) {
+     // The generated docs aren't great, but you really ought not be using
+     // this in the first place... so it's better than nothing.
+     const exportEq = symbol?.exports?.get("export=");
++
++    function getGlobalSymbols() {
++        // Global file with no inferred top level symbol, get all symbols declared in this file.
++        const sourceFile = node.getSourceFile();
++        return context.checker
++            .getSymbolsInScope(node, typescript_1.default.SymbolFlags.ModuleMember)
++            .filter((s) => s
++                .getDeclarations()
++                ?.some((d) => d.getSourceFile() === sourceFile));
++    }
++
+     if (exportEq) {
+         // JS users might also have exported types here.
+         // We need to filter for types because otherwise static methods can show up as both
+@@ -401,16 +412,29 @@ function getExports(context, node, symbol) {
+                 }
+             }
+         }
++
++        const globSymbols = getGlobalSymbols();
++        if (globSymbols && globSymbols.length > 0) {
++            globSymbols.forEach(gs => {
++                let canAdd = gs.exportSymbol === undefined || !result.includes(gs.exportSymbol);
++                if (canAdd) {
++                    const vd = gs.valueDeclaration;
++                    if (vd) {
++                        canAdd = !result.some(x => x.valueDeclaration && x.valueDeclaration.pos === vd.pos && x.valueDeclaration.end === vd.end);
++                    }
++                }
++
++                if (canAdd) {
++                    result.push(gs);
++                }
++            });
++        }
+     }
+     else {
+-        // Global file with no inferred top level symbol, get all symbols declared in this file.
+-        const sourceFile = node.getSourceFile();
+-        result = context.checker
+-            .getSymbolsInScope(node, typescript_1.default.SymbolFlags.ModuleMember)
+-            .filter((s) => s
+-            .getDeclarations()
+-            ?.some((d) => d.getSourceFile() === sourceFile));
++        result = getGlobalSymbols();
+     }
++
++
+     // Put symbols named "default" last, #1795
+     result.sort((a, b) => {
+         if (a.name === "default") {
+diff --git a/node_modules/typedoc/dist/lib/utils/loggers.js b/node_modules/typedoc/dist/lib/utils/loggers.js
+index 727254d..6080d84 100644
+--- a/node_modules/typedoc/dist/lib/utils/loggers.js
++++ b/node_modules/typedoc/dist/lib/utils/loggers.js
+@@ -8,7 +8,8 @@ const typescript_1 = __importDefault(require("typescript"));
+ const inspector_1 = require("inspector");
+ const path_1 = require("path");
+ const paths_1 = require("./paths");
+-const isDebugging = () => !!(0, inspector_1.url)();
++//const isDebugging = () => !!(0, inspector_1.url)();
++const isDebugging = () => !!process.env["TYPEDOC_DEBUG"];
+ /**
+  * List of known log levels. Used to specify the urgency of a log message.
+  */

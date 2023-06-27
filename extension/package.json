@@ -22,6 +22,7 @@
         ]
     },
     "scripts": {
+        "postinstall": "patch-package",
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
@@ -29,7 +30,8 @@
         "lint": "eslint src --ext ts",
         "test": "node ./out/test/runTest.js",
         "test2": "ts-node src/typedoc.spec.ts",
-        "test-cases": "node ./out/typedoc.spec.js"
+        "test-cases": "node ./out/typedoc.spec.js",
+        "create-patch": "npx patch-package typedoc"
     },
     "devDependencies": {
         "@types/fs-extra": "^11.0.1",
@@ -47,6 +49,7 @@
         "eslint": "^8.41.0",
         "glob": "^8.1.0",
         "mocha": "^10.2.0",
+        "patch-package": "^7.0.0",
         "ts-node": "^10.9.1",
         "typescript": "^5.1.3"
     },

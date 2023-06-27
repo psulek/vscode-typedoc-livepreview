@@ -1,4 +1,4 @@
-# log
+# Property: log
 
 ```ts
 (
@@ -14,7 +14,7 @@ Logs message and/or error at specified log level.
 
 | Parameter | Type |
 | :------ | :------ |
-| `level` | `NonNullable`\< [`LogLevel`](type-alias.LogLevel.md) \> |
+| `level` | `NonNullable`\< `LogLevel` \> |
 | `message` | `string` |
 | `error`? | `Error` |
 
