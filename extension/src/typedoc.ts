@@ -201,18 +201,33 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                             signatures = model.type.declaration.signatures;
                         }
 
-                        if (comment || (signatures && signatures.length > 0)) {
-                            if (comment === undefined) {
-                                allowAdd = signatures?.filter(x => x instanceof SignatureReflection).some(x => x.comment !== undefined || (x.parameters?.length ?? 0) > 0) === true;
-                            }
+                        if (comment && comment.isEmpty()) {
+                            comment = undefined;
+                        }
 
-                            if (allowAdd) {
-                                const name = valueDeclaration?.name?.escapedText;
-                                if (name && name.length > 0) {
-                                    model.name = name;
+                        if (signatures && signatures.length > 0) {
+                            const validSignature = signatures.some(sig => {
+                                if (sig.comment && !sig.comment.isEmpty()) {
+                                    return true;
                                 }
-                                lastConversion.reflections.push({ startline, endline, model, comment, signatures }); //, originModel });
+
+                                if (sig.parameters && sig.parameters.length > 0) {
+                                    return sig.parameters.some(p => p.comment && !p.comment.isEmpty());
+                                }
+                            });
+
+                            if (!validSignature) {
+                                signatures = undefined;
                             }
+                        }
+
+
+                        if (comment || (signatures && signatures.length > 0)) {
+                            const name = valueDeclaration?.name?.escapedText;
+                            if (name && name.length > 0) {
+                                model.name = name;
+                            }
+                            lastConversion.reflections.push({ startline, endline, model, comment, signatures }); //, originModel });
                         }
                     }
 
