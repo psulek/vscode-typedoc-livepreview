@@ -102,6 +102,9 @@ export class ShowPreviewCommand {
             const lineNumber = activeEditor.selection.active.line + 1;
             //const tempfile = vscode.Uri.joinPath(this._extensionUri, 'tmp', 'preview.ts').toString();
             const originFilename = activeEditor.document.fileName;
+
+            this.webviewPanel.title = `TypeDoc: ` + path.parse(originFilename).base;
+            
             const tempfile = path.join(this._extensionUri.fsPath, 'preview.ts');
             await this.saveTempFile(tempfile, activeEditor.document.getText());
 
@@ -134,8 +137,9 @@ export class ShowPreviewCommand {
         // if (idx > -1) {
         //     html = html.substring(0, idx);
         // }
-        const regex = /<code>/g;
-        html = html.replace(regex, '<code class="language-ts">');
+        
+        // const regex = /<code>/g;
+        // html = html.replace(regex, '<code class="language-ts">');
 
         const githubMarkdownCssUri = this.getMediaUri(webview, 'github-markdown.css', true);
         const highlightCssUri = this.getMediaUri(webview, 'highlight-github.min.css', true);

@@ -1,17 +1,24 @@
+// testcase: class|5-10
+// testcase: ctor|11-15
+// testcase: set|17-26
+
 /**
- * ABC class
+ * Expiration map like class.
+ * @typeParam K - key type in map.
+ * @typeParam V - value type in map.
  */
-class ABC {
+export default class ExpireMap<K, V> {
+    constructor() {
+    }
+
     /**
-     * Just run
-     * @returns 123 number
+     * 
+     * @param key - key to set new item in map.
+     * @param value - value to set new item in map.
+     * @param expireTimeout - expiration timeout (in ms) after which item from map will be removed on retrieval.
+     * @returns {@link ExpireMap} same instance.
      */
-    public run(): number {
-        return 123;
+    public set(key: K, value: V, expireTimeout?: number): this {
+        return this;
     }
 }
-
-/** this is const A! */ 
-const a = 123;
-
-console.log(a);

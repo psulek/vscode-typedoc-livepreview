@@ -1,7 +1,13 @@
 import * as path from 'path';
 import * as ts from 'typescript';
-import { Application, DeclarationReflection, PageEvent, Reflection, RenderTemplate, LogLevel, ReflectionKind, ContainerReflection, Comment, SignatureReflection } from 'typedoc';
+import {
+    Application, DeclarationReflection, PageEvent, Reflection, LogLevel, ReflectionKind,
+    ContainerReflection, Comment, SignatureReflection
+} from 'typedoc';
 import { arraySortBy } from './utils';
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const { BasePath } = require('typedoc');
 
 export type PreviewUpdateMode = 'content' | 'cursor';
 
@@ -11,6 +17,12 @@ type DeclarationReflectionInfo = {
     model: DeclarationReflection;
     comment?: Comment;
     signatures?: SignatureReflection[];
+};
+
+type MarkdownInfo = {
+    startline: number;
+    endline: number;
+    markdown: ''
 };
 
 const lastConversion = {
@@ -24,9 +36,9 @@ const lastConversion = {
 const validKindForChildren = [ReflectionKind.Project, ReflectionKind.Module, ReflectionKind.Namespace, ReflectionKind.Class, ReflectionKind.Interface];
 
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
-    editorLine: number, updateMode: PreviewUpdateMode): Promise<string> {
+    editorLine: number, mode: PreviewUpdateMode): Promise<string> {
     let markdown = '';
-    const compile = updateMode === 'content' || lastConversion.originFilename !== originFilename || lastConversion.reflections.length === 0;
+    const compile = mode === 'content' || lastConversion.originFilename !== originFilename || lastConversion.reflections.length === 0;
 
     if (compile) {
         lastConversion.editorLine = editorLine;
@@ -131,8 +143,10 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
                     const symbol = project.getSymbolFromReflection(model)!;
                     const modelSources = model.sources[0];
-                    const modelSourcesFileName = path.resolve(modelSources.fullFileName);
-                    if (modelSourcesFileName !== sourceFile) {
+                    //const modelSourcesFileName = path.resolve(modelSources.fullFileName);
+                    const modelSourcesFileName = modelSources.fullFileName;
+
+                    if (modelSourcesFileName !== BasePath.normalize(sourceFile)) {
                         return;
                     }
 
@@ -188,11 +202,17 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                         }
 
                         if (comment || (signatures && signatures.length > 0)) {
-                            const name = valueDeclaration?.name?.escapedText;
-                            if (name && name.length > 0) {
-                                model.name = name;
+                            if (comment === undefined) {
+                                allowAdd = signatures?.filter(x => x instanceof SignatureReflection).some(x => x.comment !== undefined || (x.parameters?.length ?? 0) > 0) === true;
                             }
-                            lastConversion.reflections.push({ startline, endline, model, comment, signatures }); //, originModel });
+
+                            if (allowAdd) {
+                                const name = valueDeclaration?.name?.escapedText;
+                                if (name && name.length > 0) {
+                                    model.name = name;
+                                }
+                                lastConversion.reflections.push({ startline, endline, model, comment, signatures }); //, originModel });
+                            }
                         }
                     }
 
@@ -217,94 +237,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
         recurseChildren(project);
 
-
-
-
-
-        // urls.forEach(mapping => {
-        //     if (mapping.model instanceof Reflection) {
-        //         const template = mapping.template;
-
-        //         // value - line number of constructor
-        //         const constructors = new Map<DeclarationReflection, number>();
-
-        //         const recurseChildren = (model: Reflection, originModel?: DeclarationReflection): void => {
-        //             if (model instanceof DeclarationReflection && model.sources && model.sources.length > 0) {
-        //                 const symbol = project.getSymbolFromReflection(model)!;
-        //                 const modelSources = model.sources[0];
-        //                 const modelSourcesFileName = path.resolve(modelSources.fullFileName);
-        //                 if (modelSourcesFileName === sourceFile) {
-        //                     let valueDeclaration = symbol.valueDeclaration! as any;
-        //                     if (valueDeclaration === undefined && symbol.declarations && symbol.declarations.length > 0) {
-        //                         valueDeclaration = symbol.declarations[0];
-        //                     }
-
-        //                     let jsDoc = valueDeclaration.jsDoc && valueDeclaration.jsDoc.length > 0 ? valueDeclaration.jsDoc[0] : undefined;
-        //                     if (jsDoc === undefined) {
-        //                         jsDoc = findParentJsDoc(valueDeclaration, modelSources.line);
-        //                     }
-
-        //                     const body = valueDeclaration.body;
-
-        //                     let startline = jsDoc ? getSourceLine(jsDoc.pos) : modelSources.line;
-        //                     let endline = modelSources.line;
-
-        //                     let bodyStartLine = 0;
-        //                     if (body) {
-        //                         const startPos = jsDoc ? jsDoc.pos : body.pos;
-        //                         startline = getSourceLine(startPos);
-        //                         endline = getSourceLine(body.end);
-        //                         bodyStartLine = getSourceLine(body.pos);
-        //                     }
-
-        //                     let allowAdd = true;
-
-        //                     // when property, check if startline is same as startline of constructor of same class, 
-        //                     // and if so, it means this property was created from constructor 'public' modifier
-        //                     if (model.kind === ReflectionKind.Property) {
-        //                         const parentCtor = findConstructor(model);
-        //                         if (parentCtor && constructors.has(parentCtor)) {
-        //                             const propertyDeclareLine = modelSources.line;
-        //                             if (constructors.get(parentCtor) === propertyDeclareLine) {
-        //                                 //startline = endline = propertyDeclareLine;
-        //                                 allowAdd = false;
-        //                             }
-        //                         }
-        //                     } else if (model.kind === ReflectionKind.Constructor) {
-        //                         constructors.set(model, bodyStartLine);
-        //                     }
-
-        //                     if (allowAdd) {
-        //                         lastConversion.reflections.push({ startline, endline, model, template, originModel });
-        //                     }
-
-        //                     const modelIsTypeLiteral = model.kind === ReflectionKind.TypeLiteral;
-        //                     if (model.children && model.children.length > 0 &&
-        //                         (validKindForChildren.includes(model.kind) ||
-        //                             (modelIsTypeLiteral && model.children?.some(x => x.kind === ReflectionKind.Property)))
-        //                     ) {
-        //                         model.children.forEach(child => { recurseChildren(child); });
-        //                     }
-        //                 }
-        //             }
-        //         };
-
-        //         let modelToInspect = mapping.model;
-        //         let originModel: DeclarationReflection | undefined = undefined;
-        //         if (mapping.model instanceof DeclarationReflection &&
-        //             mapping.model.type?.type === 'reflection' &&
-        //             mapping.model.type?.declaration instanceof DeclarationReflection
-        //             //&& mapping.model.type.declaration.children?.some(x => x.kind === ReflectionKind.Property)
-        //         ) {
-        //             modelToInspect = mapping.model.type?.declaration;
-        //             originModel = mapping.model;
-        //         }
-
-        //         recurseChildren(modelToInspect, originModel);
-        //         // recurseChildren(mapping.model);
-        //     }
-        // });
-
         lastConversion.reflections = arraySortBy(lastConversion.reflections, x => x.startline, 'asc');
     }
 
@@ -312,111 +244,91 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         return ''; // load into cache, without conversion to md
     }
 
-    let reflection: DeclarationReflectionInfo | undefined = editorLine === 1 ? lastConversion.reflections.find(x => x.startline >= editorLine) : undefined;
-    if (reflection === undefined && editorLine > 1) {
-        for (let i = 0; i < lastConversion.reflections.length; i++) {
-            const item = lastConversion.reflections[i];
-            if (editorLine === item.startline) {
-                reflection = item;
-                break;
-            }
+    const useCache = mode === 'cursor' && editorLine > 0 && lastConversion.originFilename === originFilename &&
+        lastConversion.editorLine === editorLine && lastConversion.markdown && lastConversion.markdown.length > 0;
 
-            if (editorLine >= item.startline && editorLine <= item.endline) {
-                reflection = item;
-                break;
+    if (useCache) {
+        markdown = lastConversion.markdown;
+    } else {
+        let reflection: DeclarationReflectionInfo | undefined = undefined;
+        if (editorLine > 1) {
+            for (let i = 0; i < lastConversion.reflections.length; i++) {
+                const item = lastConversion.reflections[i];
+                if (editorLine === item.startline) {
+                    reflection = item;
+                    break;
+                }
+
+                if (editorLine >= item.startline && editorLine <= item.endline) {
+                    reflection = item;
+                    break;
+                }
             }
         }
-    }
 
-    if (reflection) {
-        //let model = reflection.originModel ?? reflection.model;
-        let model = reflection.model;
-        let comment = reflection.comment;
-        let signatures = reflection.signatures;
+        if (reflection) {
+            let model = reflection.model;
+            let comment = reflection.comment;
+            let signatures = reflection.signatures;
 
-        // let comment = model.comment;
-        // let signatures = model.signatures;
+            const page = new PageEvent(PageEvent.BEGIN, model);
+            page.project = model.project;
 
-        // if ((comment === undefined && (signatures === undefined || signatures.length === 0)) && reflection.originModel) {
-        //     model = reflection.originModel!;
-        //     comment = model.comment;
-        //     signatures = model.signatures;
-        // }
+            const renderer = lastConversion.app.renderer;
+            const theme = renderer.theme!;
+            renderer.trigger(PageEvent.BEGIN, page);
 
-        // if ((comment === undefined && (signatures === undefined || signatures.length === 0)) &&
-        //     model.type &&
-        //     model.type?.type === 'reflection' &&
-        //     model.type?.declaration instanceof DeclarationReflection) {
-        //     model = model.type.declaration;
-        //     comment = model.comment;
-        //     signatures = model.signatures;
-        // }
+            let mdString = '';
+            if (comment || (signatures && signatures.length > 0)) {
+                const context = (theme as any).getRenderContext(page);
+                const md: string[] = [];
 
-        const page = new PageEvent(PageEvent.BEGIN, model);
-        page.project = model.project;
+                let pageTitle = model.hasOwnDocument || model.kind === ReflectionKind.Constructor ? '' : `${ReflectionKind.singularString(model.kind)}: `;
 
-        const renderer = lastConversion.app.renderer;
-        const theme = renderer.theme!;
-        renderer.trigger(PageEvent.BEGIN, page);
+                // @ts-ignore
+                if (model.kind !== ReflectionKind.TypeLiteral) {
+                    pageTitle += context.memberTitle(page.model, true);
+                }
+                // @ts-ignore
+                else if (model.parent && model.parent.sources && model.parent.sources.length > 0 &&
+                    !validKindForChildren.includes(model.parent.kind)) {
+                    pageTitle = context.memberTitle(model.parent, true);
+                }
 
-        let mdString = '';
-        if (comment || (signatures && signatures.length > 0)) {
-            const context = (theme as any).getRenderContext(page);
-            const md: string[] = [];
+                let headingLevel = 1;
+                if (pageTitle && pageTitle.length > 0) {
+                    md.push(`# ${pageTitle}`);
+                    headingLevel++;
+                }
 
-            let pageTitle = model.hasOwnDocument ? '' : `${ReflectionKind.singularString(model.kind)}: `;
+                if (signatures) {
+                    signatures.forEach((signature) => {
+                        md.push(context.signatureMember(signature, headingLevel));
+                    });
+                }
+                else if (comment) {
+                    if (model instanceof DeclarationReflection) {
+                        md.push(context.comment(comment, headingLevel));
+                    }
+                }
 
-            // @ts-ignore
-            //if (model.sources && model.sources.length > 0) {
-            if (model.kind !== ReflectionKind.TypeLiteral) {
-                pageTitle += context.memberTitle(page.model, true);
-            }
-            // @ts-ignore
-            else if (model.parent && model.parent.sources && model.parent.sources.length > 0 &&
-                !validKindForChildren.includes(model.parent.kind)) {
-                pageTitle = context.memberTitle(model.parent, true);
-            }
-
-            let headingLevel = 1;
-            if (pageTitle && pageTitle.length > 0) {
-                md.push(`# ${pageTitle}`);
-                headingLevel++;
+                mdString = md.join('\n\n').trimEnd();
+                markdown = mdString;
             }
 
-            if (signatures) {
-                signatures.forEach((signature) => {
-                    md.push(context.signatureMember(signature, headingLevel));
-                });
-            }
-            else if (comment) {
-                // if (reflection instanceof typedoc_1.ReferenceReflection) {
-                //     md.push(context.referenceMember(reflection));
-                // }
-
-                if (model instanceof DeclarationReflection) {
-                    //md.push(context.declarationMember(reflection, headingLevel + 1));
-                    md.push(context.comment(comment, headingLevel));
+            if (markdown.length > 0) {
+                const idx = markdown.lastIndexOf('## Source');
+                if (idx > -1) {
+                    markdown = markdown.substring(0, idx);
                 }
             }
 
-            mdString = md.join('\n\n').trimEnd();
-            markdown = mdString;
+            markdown = markdown.trimEnd();
         }
 
-        //page.contents = theme.render(page, reflection.template);
-        //markdown = (page.contents ?? '').trim() ?? '';
-        if (markdown.length > 0) {
-            const idx = markdown.lastIndexOf('## Source');
-            if (idx > -1) {
-                markdown = markdown.substring(0, idx);
-            }
-        }
-
-        markdown = markdown.trimEnd();
-    } else {
-        //markdown = lastConversion.markdown;
+        lastConversion.markdown = markdown;
     }
 
-    lastConversion.markdown = markdown;
+    lastConversion.editorLine = editorLine;
     return markdown;
 }
