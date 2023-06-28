@@ -22,13 +22,13 @@ type DeclarationReflectionInfo = {
 type MarkdownInfo = {
     startline: number;
     endline: number;
-    markdown: ''
+    markdown: string;
 };
 
 const lastConversion = {
     originFilename: '',
     editorLine: 0,
-    markdown: '',
+    markdowns: [] as MarkdownInfo[],
     app: undefined as unknown as Application,
     reflections: [] as DeclarationReflectionInfo[]
 };
@@ -221,13 +221,12 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                             }
                         }
 
-
                         if (comment || (signatures && signatures.length > 0)) {
                             const name = valueDeclaration?.name?.escapedText;
                             if (name && name.length > 0) {
                                 model.name = name;
                             }
-                            lastConversion.reflections.push({ startline, endline, model, comment, signatures }); //, originModel });
+                            lastConversion.reflections.push({ startline, endline, model, comment, signatures });
                         }
                     }
 
@@ -255,16 +254,26 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         lastConversion.reflections = arraySortBy(lastConversion.reflections, x => x.startline, 'asc');
     }
 
+    // load into cache, without conversion to md
     if (editorLine === 0) {
-        return ''; // load into cache, without conversion to md
+        return '';
     }
 
-    const useCache = mode === 'cursor' && editorLine > 0 && lastConversion.originFilename === originFilename &&
-        lastConversion.editorLine === editorLine && lastConversion.markdown && lastConversion.markdown.length > 0;
+    let useCache = mode === 'cursor' && editorLine > 0 && lastConversion.originFilename === originFilename &&
+        lastConversion.markdowns && lastConversion.markdowns.length > 0;
 
     if (useCache) {
-        markdown = lastConversion.markdown;
+        const cache = lastConversion.markdowns.find(x => editorLine >= x.startline && editorLine <= x.endline);
+        if (cache) {
+            markdown = cache.markdown ?? '';
+        } else {
+            useCache = false;
+        }
     } else {
+        lastConversion.markdowns = [];
+    }
+
+    if (!useCache) {
         let reflection: DeclarationReflectionInfo | undefined = undefined;
         if (editorLine > 1) {
             for (let i = 0; i < lastConversion.reflections.length; i++) {
@@ -339,9 +348,15 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
             }
 
             markdown = markdown.trimEnd();
+            if (markdown && markdown.length > 0) {
+                const cache = lastConversion.markdowns.find(x => editorLine >= x.startline && editorLine <= x.endline);
+                if (cache) {
+                    cache.markdown = markdown;
+                } else {
+                    lastConversion.markdowns.push({ markdown, startline: reflection.startline, endline: reflection.endline });
+                }
+            }
         }
-
-        lastConversion.markdown = markdown;
     }
 
     lastConversion.editorLine = editorLine;
