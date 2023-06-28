@@ -8,7 +8,7 @@ const throttle = require('lodash.throttle');
 //const debounce = require('lodash.debounce');
 
 
-import { PreviewUpdateMode, convertTypeDocToMarkdown } from './typedoc';
+import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastFileName } from './converter';
 import path = require('node:path');
 import { asyncDebounce } from './utils';
 
@@ -33,7 +33,13 @@ export class ShowPreviewCommand {
     constructor(private readonly context: vscode.ExtensionContext, private readonly md: MarkdownIt) {
         this._extensionUri = context.extensionUri;
 
-        context.subscriptions.push(vscode.commands.registerCommand(this.id, () => this.execute()));
+        context.subscriptions.push(
+            vscode.commands.registerCommand(this.id, () => this.execute()),
+
+            // vscode.commands.registerTextEditorCommand('typedocLivePreview.showPreviewToSide', textEditor => {
+
+            // })
+        );
     }
 
     execute(): void {
@@ -55,6 +61,8 @@ export class ShowPreviewCommand {
                 enableFindWidget: true,
                 enableScripts: true,
                 enableCommandUris: true,
+                //retainContextWhenHidden: true,
+                localResourceRoots: [vscode.Uri.joinPath(this._extensionUri, 'media')]
             }
         );
 
@@ -104,7 +112,7 @@ export class ShowPreviewCommand {
             const originFilename = activeEditor.document.fileName;
 
             this.webviewPanel.title = `TypeDoc: ` + path.parse(originFilename).base;
-            
+
             const tempfile = path.join(this._extensionUri.fsPath, 'preview.ts');
             await this.saveTempFile(tempfile, activeEditor.document.getText());
 
@@ -117,6 +125,13 @@ export class ShowPreviewCommand {
         if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
 
         this.webviewPanel.webview.html = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
+    }
+
+    private resetWebviewPanel(): void {
+        if (this.webviewPanel && this.webviewPanel.webview) {
+            this.webviewPanel.title = `TypeDoc: Live Preview`;
+            this.webviewPanel.webview.html = '';
+        }
     }
 
     private getMediaUri(webview: vscode.Webview, filename: string, themed: boolean): vscode.Uri {
@@ -133,14 +148,6 @@ export class ShowPreviewCommand {
     private wrapHTMLContentInDoc(webview: vscode.Webview, html: string): string {
         const nonce = this.getNonce();
 
-        // const idx = html.lastIndexOf('<h2>Source</h2>');
-        // if (idx > -1) {
-        //     html = html.substring(0, idx);
-        // }
-        
-        // const regex = /<code>/g;
-        // html = html.replace(regex, '<code class="language-ts">');
-
         const githubMarkdownCssUri = this.getMediaUri(webview, 'github-markdown.css', true);
         const highlightCssUri = this.getMediaUri(webview, 'highlight-github.min.css', true);
         const globalCssUri = this.getMediaUri(webview, 'global.css', false);
@@ -148,12 +155,14 @@ export class ShowPreviewCommand {
         const libJsUri = this.getMediaUri(webview, 'lib.js', false);
         const highlightJsUri = this.getMediaUri(webview, 'highlight.min.js', false);
         const highlightTscJsUri = this.getMediaUri(webview, 'highlight-tsc.min.js', false);
+        //<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 
         return `<!DOCTYPE html>
 			<html lang="en">
             <head>
 				<meta charset="UTF-8">
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+				<meta http-equiv="Content-Security-Policy" content="default-src vscode-resource:; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+                
 
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -167,7 +176,12 @@ export class ShowPreviewCommand {
 				<title>TypeDoc: Live Preview</title>
 			</head>
 			<body class="markdown-body">
-                ${html}
+                <div class="content">
+                    ${html}
+                </div>
+                <footer>
+                    Powered by <a href="https://typedoc.org" class="typedoclogo" target="_blank">TypeDoc</a>
+                </footer>
                 <script nonce="${nonce}" src="${libJsUri}"></script>
 			</body>
 			</html>`;
@@ -219,6 +233,13 @@ export class ShowPreviewCommand {
             vscode.window.onDidChangeTextEditorSelection(() => {
                 //this.updatePreviewCursorChanged();
                 deb_updatePreviewCursorChanged();
+            }),
+
+            vscode.window.onDidChangeVisibleTextEditors(() => {
+                const lastConvertFile = getLastFileName();
+                if (!vscode.window.visibleTextEditors.some(x => x.document.fileName === lastConvertFile)) {
+                    this.resetWebviewPanel();
+                }
             })
         );
     }

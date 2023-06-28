@@ -35,6 +35,10 @@ const lastConversion = {
 
 const validKindForChildren = [ReflectionKind.Project, ReflectionKind.Module, ReflectionKind.Namespace, ReflectionKind.Class, ReflectionKind.Interface];
 
+export function getLastFileName(): string {
+    return lastConversion.originFilename;
+}
+
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
     editorLine: number, mode: PreviewUpdateMode): Promise<string> {
     let markdown = '';

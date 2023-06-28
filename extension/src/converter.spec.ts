@@ -4,7 +4,7 @@ import * as process from 'process';
 import * as fse from 'fs-extra';
 //const chalk = require('chalk');
 import * as chalk from 'chalk';
-import { convertTypeDocToMarkdown } from './typedoc';
+import { convertTypeDocToMarkdown } from './converter';
 import { arraySortBy, fidFiles, promiseEachSeries, readFileLinesUntil } from './utils';
 
 const fileHeader = `// testcase:`;
