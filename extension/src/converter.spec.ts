@@ -5,7 +5,7 @@ import * as fse from 'fs-extra';
 //const chalk = require('chalk');
 import * as chalk from 'chalk';
 import { convertTypeDocToMarkdown } from './converter';
-import { arraySortBy, fidFiles, promiseEachSeries, readFileLinesUntil } from './utils';
+import { arraySortBy, findFiles, promiseEachSeries, readFileLinesUntil } from './utils';
 
 const fileHeader = `// testcase:`;
 const log = console.log;
@@ -32,7 +32,7 @@ async function main() {
         const colorWarn = chalk.yellow;
         const colorSuccess = chalk.green;
 
-        const testCases = arraySortBy(await fidFiles('*.ts', { cwd: dirTestCases }), x => x, 'asc');
+        const testCases = arraySortBy(await findFiles('*.ts', { cwd: dirTestCases }), x => x, 'asc');
         const totalCount = testCases.length;
         log('Found ' + colorNumber(totalCount) + ' test cases: (' + colorFile(testCases.join(', ')) + ')\n');
 

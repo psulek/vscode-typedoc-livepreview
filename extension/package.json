@@ -10,16 +10,48 @@
         "Other"
     ],
     "activationEvents": [
-        "onLanguage:typescript"
+        "onLanguage:typescript",
+        "onWebviewPanel:"
     ],
     "main": "./out/extension.js",
     "contributes": {
-        "commands": [
+        "commands": [{
+                "category": "TypeDoc Preview",
+                "command": "typedocPreview.showPreview",
+                "title": "Open TypeDoc Preview"
+            },
             {
-                "command": "typedocLivePreview.showPreview",
-                "title": "TypeDoc: Show TypeDoc Preview"
+                "category": "TypeDoc Preview",
+                "command": "typedocPreview.showPreviewToSide",
+                "title": "Open TypeDoc Preview to the Side",
+                "icon": {
+                    "light": "media/typedoclogo.png",
+                    "dark": "images/typedoclogo.png"
+                }
             }
-        ]
+        ],
+        "keybindings": [{
+            "command": "typedocPreview.showPreviewToSide",
+            "key": "ctrl+alt+p",
+            "when": "resourceLangId == typescript"
+        }],
+        "menus": {
+            "commandPalette": [{
+                    "command": "typedocPreview.showPreview",
+                    "when": "false",
+                    "group": "navigation"
+                },
+                {
+                    "command": "typedocPreview.showPreviewToSide",
+                    "group": "navigation"
+                }
+            ],
+            "editor/title": [{
+                "command": "typedocPreview.showPreviewToSide",
+                "group": "navigation",
+                "when": "editorLangId == typescript"
+            }]
+        }
     },
     "scripts": {
         "postinstall": "patch-package",
