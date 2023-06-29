@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as MarkdownIt from 'markdown-it';
-import {getUri, context, webViewPanelType, getMediaUri} from './shared';
+import { getUri, context, webViewPanelType, getMediaUri, setTheme } from './shared';
 import { asyncDebounce } from './utils';
 import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastFileName } from './converter';
 
@@ -10,19 +10,19 @@ let debouncedUpdatePreview: Function;
 // eslint-disable-next-line @typescript-eslint/naming-convention
 let deb_updatePreviewCursorChanged: Function;
 
+const emptyContentHint = `<div class="hint-panel">
+<span>Place text cursor  on typedoc comment to see its preview</span>
+</div>`;
+
 export class ShowPreviewCommand {
     private webviewPanel?: vscode.WebviewPanel;
-    //private readonly _extensionUri: vscode.Uri;
     private md!: MarkdownIt;
 
     private lastFile = '';
 
     private currentFile = '';
 
-    //constructor(private readonly context: vscode.ExtensionContext, private readonly md: MarkdownIt) {
     constructor() {
-        //this._extensionUri = context.extensionUri;
-
         this.md = new MarkdownIt({
             html: false,
             breaks: true,
@@ -40,8 +40,6 @@ export class ShowPreviewCommand {
     private createWebviewPanel(viewColumn?: vscode.ViewColumn) {
         if (this.webviewPanel) { return; }
 
-        //const { activeTextEditor } = vscode.window;
-        //const viewColumn = activeTextEditor && activeTextEditor.viewColumn ? activeTextEditor.viewColumn + 1 : vscode.ViewColumn.One;
         const webviewPanel = vscode.window.createWebviewPanel(
             webViewPanelType,
             'TypeDoc: Live Preview',
@@ -52,7 +50,6 @@ export class ShowPreviewCommand {
                 enableCommandUris: true,
                 //retainContextWhenHidden: true,
                 localResourceRoots: [
-                    //vscode.Uri.joinPath(this._extensionUri, 'media')
                     getUri('media')
                 ]
             }
@@ -64,18 +61,12 @@ export class ShowPreviewCommand {
 
         webviewPanel.onDidChangeViewState(e => {
             if (this.webviewPanel?.visible && debouncedUpdatePreview) {
-                //this.updatePreview();
-                //debouncedUpdatePreview();
                 deb_updatePreviewCursorChanged();
             }
         });
 
         this.webviewPanel = webviewPanel;
     }
-
-    // private get currentFile(): string {
-    //     return vscode.window.activeTextEditor?.document?.fileName ?? '';
-    // }
 
     private async updatePreview(): Promise<void> {
         await this.updatePreviewWindow('content');
@@ -90,22 +81,13 @@ export class ShowPreviewCommand {
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor || !this.webviewPanel) { return; }
 
-        // updateCounter++;
-        // const now = Date.now();
-        // const updateDelta = updateCounterLastDate === 0 ? 0 : now - updateCounterLastDate;
-        // updateCounterLastDate = now;
-
-        // console.warn(`${this.id}.updateCounter: ${updateCounter }, update delta: ${updateDelta}ms`);
-
         let html = '';
         if (this.isSupportedFileOpened()) {
             const lineNumber = activeEditor.selection.active.line + 1;
             const originFilename = activeEditor.document.fileName;
-            //const originFilename = this.currentFile;
 
             this.webviewPanel.title = `TypeDoc: ` + path.parse(originFilename).base;
 
-            //const tempfile = path.join(this._extensionUri.fsPath, 'preview.ts');
             const tempfile = getUri('preview.ts').fsPath;
             await this.saveTempFile(tempfile, activeEditor.document.getText());
 
@@ -127,13 +109,6 @@ export class ShowPreviewCommand {
         }
     }
 
-    // private getMediaUri(webview: vscode.Webview, filename: string, themed: boolean): vscode.Uri {
-    //     const diskPath = themed
-    //         ? vscode.Uri.joinPath(this._extensionUri, 'media', this.vsTheme, filename)
-    //         : vscode.Uri.joinPath(this._extensionUri, 'media', filename);
-    //     return webview.asWebviewUri(diskPath);
-    // }
-
     private async saveTempFile(file: string, text: string): Promise<void> {
         await fs.writeFile(file, text, { encoding: 'utf-8' });
     }
@@ -148,7 +123,11 @@ export class ShowPreviewCommand {
         const libJsUri = getMediaUri(webview, 'lib.js', false);
         const highlightJsUri = getMediaUri(webview, 'highlight.min.js', false);
         const highlightTscJsUri = getMediaUri(webview, 'highlight-tsc.min.js', false);
-        //<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+
+        html = html.trim();
+        if (html.length === 0) {
+            html = emptyContentHint;
+        }
 
         return `<!DOCTYPE html>
 			<html lang="en">
@@ -195,36 +174,30 @@ export class ShowPreviewCommand {
     }
 
     private registerEvents() {
-        //const throttledUpdate = throttle(this.updatePreview.bind(this), 500);
-        //const debouncedUpdate = debounce(this.updatePreview.bind(this), 500, {leading: false, trailing: true, maxWait: 1000});
         debouncedUpdatePreview = asyncDebounce(this.updatePreview.bind(this), 500, { leading: false, trailing: true, maxWait: 1000 }) as unknown as Function;
-
         // eslint-disable-next-line @typescript-eslint/naming-convention
         deb_updatePreviewCursorChanged = asyncDebounce(this.updatePreviewCursorChanged.bind(this), 100, { leading: false, trailing: true, maxWait: 1000 }) as unknown as Function;
 
         context.subscriptions.push(
+            vscode.window.onDidChangeActiveColorTheme(theme => {
+                setTheme(theme.kind);
+                this.updatePreviewCursorChanged();
+            }),
+
             vscode.workspace.onDidChangeTextDocument(() => {
-                //throttledUpdate();
                 // @ts-ignore
                 debouncedUpdatePreview();
             }),
             vscode.window.onDidChangeActiveTextEditor(e => {
-                //return this.isSupportedFileOpened() && this.updatePreview();
-                // @ts-ignore
-                //return this.isSupportedFileOpened() && debouncedUpdatePreview();
-
                 const supportedFile = this.isSupportedFileOpened();
                 if (!supportedFile || this.currentFile !== this.lastFile) {
                     this.updatePreview();
                 } else {
                     debouncedUpdatePreview();
                 }
-
-                //return debouncedUpdatePreview();
             }),
 
             vscode.window.onDidChangeTextEditorSelection(() => {
-                //this.updatePreviewCursorChanged();
                 deb_updatePreviewCursorChanged();
             }),
 

@@ -26,6 +26,10 @@ export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument
     return uri ? supportedExtensions.includes(path.extname(uri.fsPath)) : false;
 }
 
+export function setTheme(vsThemeKind: vscode.ColorThemeKind): void {
+    theme = vsThemeKind === vscode.ColorThemeKind.Dark ? 'dark' : 'light';
+}
+
 export const getUri = (relativePath: string): vscode.Uri =>
     vscode.Uri.joinPath(context.extensionUri, relativePath);
 

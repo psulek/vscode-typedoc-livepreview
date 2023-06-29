@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { init, isTypescriptFile } from './shared';
+import { init, isTypescriptFile, setTheme } from './shared';
 import { previewPanel } from './previewCommand';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -15,6 +15,8 @@ export function activate(context: vscode.ExtensionContext) {
             fsPath: uri.fsPath,
         });
     };
+
+    setTheme(vscode.window.activeColorTheme.kind);
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
