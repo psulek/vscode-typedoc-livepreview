@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { init, isTypescriptFile } from './shared';
-import { previewPanel } from './preview';
+import { previewPanel } from './previewCommand';
 
 export function activate(context: vscode.ExtensionContext) {
     init(context);
