@@ -1,3 +1,15 @@
+diff --git a/node_modules/typedoc/dist/index.js b/node_modules/typedoc/dist/index.js
+index fc8c189..575b542 100644
+--- a/node_modules/typedoc/dist/index.js
++++ b/node_modules/typedoc/dist/index.js
+@@ -77,5 +77,7 @@ Object.defineProperty(exports, "JSONOutput", { enumerable: true, get: function (
+ Object.defineProperty(exports, "Serializer", { enumerable: true, get: function () { return serialization_1.Serializer; } });
+ Object.defineProperty(exports, "Deserializer", { enumerable: true, get: function () { return serialization_1.Deserializer; } });
+ Object.defineProperty(exports, "SerializeEvent", { enumerable: true, get: function () { return serialization_1.SerializeEvent; } });
++var basepath_1 = require("./lib/converter/utils/base-path");
++Object.defineProperty(exports, "BasePath", { enumerable: true, get: function () { return basepath_1.BasePath; } });
+ const typescript_1 = __importDefault(require("typescript"));
+ exports.TypeScript = typescript_1.default;
 diff --git a/node_modules/typedoc/dist/lib/converter/converter.js b/node_modules/typedoc/dist/lib/converter/converter.js
 index befd6eb..8a8e2ef 100644
 --- a/node_modules/typedoc/dist/lib/converter/converter.js
