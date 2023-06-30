@@ -6,7 +6,7 @@ export type VsCodeTheme = 'light' | 'dark';
 export const webViewPanelType = 'typedocPreview';
 
 export let context: vscode.ExtensionContext;
-export let theme: VsCodeTheme = 'light';
+let activeTheme: VsCodeTheme = 'light';
 
 const supportedExtensions = ['.ts', '.mts', '.tsx', '.mtsx'];
 
@@ -26,8 +26,24 @@ export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument
     return uri ? supportedExtensions.includes(path.extname(uri.fsPath)) : false;
 }
 
+export const configKeys = {
+    emptySignatures: 'TypeDocLivePreview.emptySignatures'
+};
+
+export type ConfigType = {
+    hideEmptySignatures: boolean;
+};
+
+export function getConfig(): ConfigType {
+    const cfg = vscode.workspace.getConfiguration();
+    const emptySignatures = cfg.get(configKeys.emptySignatures) as string;
+    return {
+        hideEmptySignatures: emptySignatures === 'hide'
+    };
+}
+
 export function setTheme(vsThemeKind: vscode.ColorThemeKind): void {
-    theme = vsThemeKind === vscode.ColorThemeKind.Dark ? 'dark' : 'light';
+    activeTheme = vsThemeKind === vscode.ColorThemeKind.Dark ? 'dark' : 'light';
 }
 
 export const getUri = (relativePath: string): vscode.Uri =>
@@ -36,7 +52,7 @@ export const getUri = (relativePath: string): vscode.Uri =>
 
 export const getMediaUri = (webview: vscode.Webview, filename: string, themed: boolean): vscode.Uri => {
     const diskPath = themed
-        ? vscode.Uri.joinPath(context.extensionUri, 'media', theme, filename)
+        ? vscode.Uri.joinPath(context.extensionUri, 'media', activeTheme, filename)
         : vscode.Uri.joinPath(context.extensionUri, 'media', filename);
     return webview.asWebviewUri(diskPath);
 };

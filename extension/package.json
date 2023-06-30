@@ -51,7 +51,27 @@
                 "group": "navigation",
                 "when": "editorLangId == typescript"
             }]
-        }
+        },
+        "configuration": [{
+            "id": "common",
+            "title": "TypeDoc Live Preview",
+            "properties": {
+                "TypeDocLivePreview.emptySignatures": {
+                    "type": "string",
+                    "enum": [
+                        "show",
+                        "hide"
+                    ],
+                    "markdownEnumDescriptions": [
+                        "`show` - shows signatures even when they are empty",
+                        "`hide` - do not show empty signatures"
+                    ],
+                    "default": "hide",
+                    "description": "Show empty signatures",
+                    "scope": "window"
+                }
+            }
+        }]
     },
     "scripts": {
         "postinstall": "patch-package",

@@ -5,6 +5,7 @@ import {
     ContainerReflection, Comment, SignatureReflection
 } from 'typedoc';
 import { arraySortBy } from './utils';
+import { getConfig } from './shared';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const { BasePath } = require('typedoc');
@@ -39,10 +40,31 @@ export function getLastFileName(): string {
     return lastConversion.originFilename;
 }
 
+const tscOptions = {
+    target: 7,
+    module: 6,
+    declaration: false,
+    declarationMap: false,
+    strict: true,
+    noEmitOnError: true,
+    removeComments: true,
+    sourceMap: true,
+    suppressImplicitAnyIndexErrors: true,
+    allowSyntheticDefaultImports: true,
+    forceConsistentCasingInFileNames: true,
+    esModuleInterop: true,
+    skipLibCheck: true,
+    noImplicitAny: true,
+    noUnusedLocals: false,
+    noUnusedParameters: false,
+    preserveConstEnums: true
+};
+
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
     editorLine: number, mode: PreviewUpdateMode): Promise<string> {
     let markdown = '';
     const compile = mode === 'content' || lastConversion.originFilename !== originFilename || lastConversion.reflections.length === 0;
+    const hideEmptySignatures = getConfig().hideEmptySignatures;
 
     if (compile) {
         lastConversion.editorLine = editorLine;
@@ -70,25 +92,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         };
         await app.bootstrapWithPlugins(opts);
 
-        app.options.setCompilerOptions([sourceFile], {
-            target: 7, //ScriptTarget.ES2020,
-            module: 6, // ModuleKind.ES2020,
-            declaration: false,
-            declarationMap: false,
-            strict: true,
-            noEmitOnError: true,
-            removeComments: true,
-            sourceMap: true,
-            suppressImplicitAnyIndexErrors: true,
-            allowSyntheticDefaultImports: true,
-            forceConsistentCasingInFileNames: true,
-            esModuleInterop: true,
-            skipLibCheck: true,
-            noImplicitAny: true,
-            noUnusedLocals: false,
-            noUnusedParameters: false,
-            preserveConstEnums: true
-        }, undefined);
+        app.options.setCompilerOptions([sourceFile], tscOptions, undefined);
 
         const project = app.convert()!;
         const renderer = app.renderer;
@@ -147,7 +151,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
                     const symbol = project.getSymbolFromReflection(model)!;
                     const modelSources = model.sources[0];
-                    //const modelSourcesFileName = path.resolve(modelSources.fullFileName);
                     const modelSourcesFileName = modelSources.fullFileName;
 
                     if (modelSourcesFileName !== BasePath.normalize(sourceFile)) {
@@ -205,7 +208,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                             signatures = model.type.declaration.signatures;
                         }
 
-                        if (comment && comment.isEmpty()) {
+                        if (comment && comment.isEmpty() && hideEmptySignatures) {
                             comment = undefined;
                         }
 
@@ -220,7 +223,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                 }
                             });
 
-                            if (!validSignature) {
+                            if (!validSignature && hideEmptySignatures) {
                                 signatures = undefined;
                             }
                         }
