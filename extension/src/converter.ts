@@ -17,7 +17,8 @@ type DeclarationReflectionInfo = {
     endline: number;
     model: DeclarationReflection;
     comment?: Comment;
-    signatures?: SignatureReflection[];
+    //signatures?: SignatureReflection[];
+    signature?: SignatureReflection;
 };
 
 type MarkdownInfo = {
@@ -26,18 +27,31 @@ type MarkdownInfo = {
     markdown: string;
 };
 
-const lastConversion = {
-    originFilename: '',
-    editorLine: 0,
-    markdowns: [] as MarkdownInfo[],
-    app: undefined as unknown as Application,
-    reflections: [] as DeclarationReflectionInfo[]
+type ConversionCache = {
+    originFilename: string,
+    editorLine: number,
+    markdowns: MarkdownInfo[],
+    app: Application,
+    reflections: DeclarationReflectionInfo[]
 };
+
+let lastConversion: ConversionCache;
+resetCache();
 
 const validKindForChildren = [ReflectionKind.Project, ReflectionKind.Module, ReflectionKind.Namespace, ReflectionKind.Class, ReflectionKind.Interface];
 
 export function getLastFileName(): string {
     return lastConversion.originFilename;
+}
+
+export function resetCache(): void {
+    lastConversion = {
+        originFilename: '',
+        editorLine: 0,
+        markdowns: [] as MarkdownInfo[],
+        app: undefined as unknown as Application,
+        reflections: [] as DeclarationReflectionInfo[]
+    };
 }
 
 const tscOptions = {
@@ -60,13 +74,19 @@ const tscOptions = {
     preserveConstEnums: true
 };
 
+//const fixMarkdown = (val: string): string => val.replace(/<br \/>/g, '@');
+
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
     editorLine: number, mode: PreviewUpdateMode): Promise<string> {
     let markdown = '';
     const compile = mode === 'content' || lastConversion.originFilename !== originFilename || lastConversion.reflections.length === 0;
     const hideEmptySignatures = getConfig().hideEmptySignatures;
 
+    const compiledReflections: DeclarationReflectionInfo[] = [];
+
     if (compile) {
+        const normalizedSourceFile = BasePath.normalize(sourceFile);
+
         lastConversion.editorLine = editorLine;
         lastConversion.originFilename = originFilename;
 
@@ -128,6 +148,25 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
             return jsDoc;
         };
 
+        const findSourceFileName = (reflection: SignatureReflection): string => {
+            return reflection.sources && Array.isArray(reflection.sources) && reflection.sources.length > 0 ? reflection.sources[0].fullFileName : '';
+        };
+
+        const isSourceFileValid = (reflection: SignatureReflection): boolean => findSourceFileName(reflection) === normalizedSourceFile;
+
+        const findParentSignature = (reflection: Reflection): (SignatureReflection | undefined) => {
+            let parent = reflection.parent as any;
+            while (parent) {
+                if (parent instanceof SignatureReflection) {
+                    break;
+                }
+
+                parent = parent.parent;
+            }
+
+            return parent instanceof SignatureReflection ? parent : undefined;
+        };
+
         const findConstructor = (ref: Reflection): DeclarationReflection | undefined => {
             if (ref.parent && ref.parent.kind === ReflectionKind.Class && ref.parent instanceof DeclarationReflection
                 && ref.parent.children && ref.parent.children.length > 0) {
@@ -153,7 +192,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                     const modelSources = model.sources[0];
                     const modelSourcesFileName = modelSources.fullFileName;
 
-                    if (modelSourcesFileName !== BasePath.normalize(sourceFile)) {
+                    if (modelSourcesFileName !== normalizedSourceFile) {
                         return;
                     }
 
@@ -233,7 +272,50 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                             if (name && name.length > 0) {
                                 model.name = name;
                             }
-                            lastConversion.reflections.push({ startline, endline, model, comment, signatures });
+
+                            if (signatures && signatures.length > 0) {
+                                signatures.forEach(sig => {
+
+                                    //project.get
+
+                                    // getSourceLine(project.reflectionIdToSymbolMap.get(project.reflectionChildren.get(sig.id)[0]).valueDeclaration.parent.jsDoc[0].pos)
+
+                                    const childRefs = (project as any).getReflectionChildsByParentId(sig.id);
+                                    if (childRefs && Array.isArray(childRefs) && childRefs.length > 0) {
+                                        const childSymbol = (project as any).getSymbolByReflectionId(childRefs[0]);
+                                        if (childSymbol) {
+                                            const childRef = project.getReflectionFromSymbol(childSymbol);
+                                            if (childRef) {
+                                                const childParent = findParentSignature(childRef);
+                                                if (childParent) {
+                                                    //const childParentSourceFile = findSourceFileName(childParent);
+                                                    //const validFile = childParentSourceFile === normalizedSourceFile;
+                                                    if (isSourceFileValid(childParent) && childSymbol.valueDeclaration && childSymbol.valueDeclaration.parent) {
+                                                        const jsDoc = (childSymbol.valueDeclaration.parent as any).jsDoc;
+                                                        if (jsDoc && Array.isArray(jsDoc) && jsDoc.length > 0) {
+                                                            startline = getSourceLine(jsDoc[0].pos);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    let signatureFileIsValid = true;
+                                    if (sig.sources && sig.sources.length > 0) {
+                                        signatureFileIsValid = isSourceFileValid(sig);
+                                        if (sig.sources[0].line > endline) {
+                                            endline = sig.sources[0].line;
+                                        }
+                                    }
+
+                                    if (signatureFileIsValid) {
+                                        compiledReflections.push({ startline, endline, model, comment, signature: sig });
+                                    }
+                                });
+                            } else {
+                                compiledReflections.push({ startline, endline, model, comment, signature: undefined });
+                            }
                         }
                     }
 
@@ -258,6 +340,12 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
         recurseChildren(project);
 
+        //lastConversion.reflections = arraySortBy(lastConversion.reflections, x => x.startline, 'asc');
+    }
+
+
+    if (compiledReflections.length > 0) {
+        lastConversion.reflections.push(...compiledReflections);
         lastConversion.reflections = arraySortBy(lastConversion.reflections, x => x.startline, 'asc');
     }
 
@@ -281,26 +369,28 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
     }
 
     if (!useCache) {
-        let reflection: DeclarationReflectionInfo | undefined = undefined;
+        let lineReflection: DeclarationReflectionInfo | undefined = undefined;
         if (editorLine > 1) {
             for (let i = 0; i < lastConversion.reflections.length; i++) {
                 const item = lastConversion.reflections[i];
                 if (editorLine === item.startline) {
-                    reflection = item;
+                    lineReflection = item;
                     break;
                 }
 
                 if (editorLine >= item.startline && editorLine <= item.endline) {
-                    reflection = item;
+                    lineReflection = item;
                     break;
                 }
             }
         }
 
-        if (reflection) {
+        const renderReflection = (reflection: DeclarationReflectionInfo): string => {
+            let result = '';
             let model = reflection.model;
             let comment = reflection.comment;
-            let signatures = reflection.signatures;
+            //let signatures = reflection.signatures;
+            let signature = reflection.signature;
 
             const page = new PageEvent(PageEvent.BEGIN, model);
             page.project = model.project;
@@ -310,7 +400,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
             renderer.trigger(PageEvent.BEGIN, page);
 
             let mdString = '';
-            if (comment || (signatures && signatures.length > 0)) {
+            if (comment || signature) {
                 const context = (theme as any).getRenderContext(page);
                 const md: string[] = [];
 
@@ -332,10 +422,8 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                     headingLevel++;
                 }
 
-                if (signatures) {
-                    signatures.forEach((signature) => {
-                        md.push(context.signatureMember(signature, headingLevel));
-                    });
+                if (signature) {
+                    md.push(context.signatureMember(signature, headingLevel));
                 }
                 else if (comment) {
                     if (model instanceof DeclarationReflection) {
@@ -344,26 +432,36 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                 }
 
                 mdString = md.join('\n\n').trimEnd();
-                markdown = mdString;
+                result = mdString;
             }
 
-            if (markdown.length > 0) {
-                const idx = markdown.lastIndexOf('## Source');
+            if (result.length > 0) {
+                const idx = result.lastIndexOf('## Source');
                 if (idx > -1) {
-                    markdown = markdown.substring(0, idx);
+                    result = result.substring(0, idx);
                 }
             }
 
-            markdown = markdown.trimEnd();
-            if (markdown && markdown.length > 0) {
-                const cache = lastConversion.markdowns.find(x => editorLine >= x.startline && editorLine <= x.endline);
+            result = result.trimEnd();
+            if (result && result.length > 0) {
+                //const cache = lastConversion.markdowns.find(x => editorLine >= x.startline && editorLine <= x.endline);
+                const cache = lastConversion.markdowns.find(x => x.startline === reflection.startline && x.endline === reflection.endline);
                 if (cache) {
-                    cache.markdown = markdown;
+                    cache.markdown = result;
                 } else {
-                    lastConversion.markdowns.push({ markdown, startline: reflection.startline, endline: reflection.endline });
+                    lastConversion.markdowns.push({ markdown: result, startline: reflection.startline, endline: reflection.endline });
                 }
             }
-        }
+
+            return result;
+        };
+
+        arraySortBy(compiledReflections, x => x.startline, 'asc').forEach(reflection => {
+            const md = renderReflection(reflection);
+            if (reflection === lineReflection) {
+                markdown = md;
+            }
+        });
     }
 
     lastConversion.editorLine = editorLine;

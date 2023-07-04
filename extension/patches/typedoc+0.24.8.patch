@@ -78,6 +78,27 @@ index befd6eb..8a8e2ef 100644
      // Put symbols named "default" last, #1795
      result.sort((a, b) => {
          if (a.name === "default") {
+diff --git a/node_modules/typedoc/dist/lib/models/reflections/project.js b/node_modules/typedoc/dist/lib/models/reflections/project.js
+index 19deae5..f41d812 100644
+--- a/node_modules/typedoc/dist/lib/models/reflections/project.js
++++ b/node_modules/typedoc/dist/lib/models/reflections/project.js
+@@ -192,6 +192,16 @@ class ProjectReflection extends container_1.ContainerReflection {
+     getSymbolFromReflection(reflection) {
+         return this.reflectionIdToSymbolMap.get(reflection.id);
+     }
++
++    getSymbolByReflectionId(reflectionId) {
++        return this.reflectionIdToSymbolMap.get(reflectionId);
++    }
++
++    getReflectionChildsByParentId(reflectionId) {
++        return this.reflectionChildren.getNoInsert(reflectionId);
++    }
++
++
+     getReferenceGraph() {
+         if (!this.referenceGraph) {
+             this.referenceGraph = new Map();
 diff --git a/node_modules/typedoc/dist/lib/utils/loggers.js b/node_modules/typedoc/dist/lib/utils/loggers.js
 index 727254d..6080d84 100644
 --- a/node_modules/typedoc/dist/lib/utils/loggers.js

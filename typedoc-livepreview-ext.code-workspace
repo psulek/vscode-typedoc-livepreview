@@ -6,5 +6,8 @@
 		{
 			"path": "sampleapp"
 		}
-	]
+    ],
+    "settings": {
+        "svg.preview.background": "dark-transparent"
+    }
 }

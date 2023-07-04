@@ -4,14 +4,18 @@ import * as path from 'path';
 import * as MarkdownIt from 'markdown-it';
 import { getUri, context, webViewPanelType, getMediaUri, setTheme } from './shared';
 import { asyncDebounce } from './utils';
-import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastFileName } from './converter';
+import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastFileName, resetCache } from './converter';
 
 let debouncedUpdatePreview: Function;
 // eslint-disable-next-line @typescript-eslint/naming-convention
 let deb_updatePreviewCursorChanged: Function;
 
 const emptyContentHint = `<div class="hint-panel">
-<span>Place text cursor  on typedoc comment to see its preview</span>
+<span>Place text cursor within <b>typescript comment</b> to see its preview</span>
+</div>`;
+
+const loadingHtml = `<div style="width: 16px; height: 16px;">
+<svg fill="#6495ed" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><style>@keyframes spinner_MGfb{93.75%{opacity:.2}}.spinner_S1WN{animation:spinner_MGfb .8s linear infinite;animation-delay:-.8s}</style><circle cx="4" cy="12" r="3" class="spinner_S1WN"/><circle cx="12" cy="12" r="3" class="spinner_S1WN" style="animation-delay:-.65s"/><circle cx="20" cy="12" r="3" class="spinner_S1WN" style="animation-delay:-.5s"/></svg>
 </div>`;
 
 export class ShowPreviewCommand {
@@ -33,6 +37,7 @@ export class ShowPreviewCommand {
     show({ viewColumn, fsPath }: { viewColumn?: vscode.ViewColumn, fsPath: string }): void {
         this.currentFile = fsPath;
         this.createWebviewPanel(viewColumn);
+        this.resetWebviewPanel();
         this.updatePreview();
         this.registerEvents();
     }
@@ -57,6 +62,7 @@ export class ShowPreviewCommand {
 
         webviewPanel.onDidDispose(() => {
             this.webviewPanel = undefined;
+            resetCache();
         }, null, context.subscriptions);
 
         webviewPanel.onDidChangeViewState(e => {
@@ -105,7 +111,7 @@ export class ShowPreviewCommand {
     private resetWebviewPanel(): void {
         if (this.webviewPanel && this.webviewPanel.webview) {
             this.webviewPanel.title = `TypeDoc: Live Preview`;
-            this.webviewPanel.webview.html = '';
+            this.webviewPanel.webview.html = loadingHtml;
         }
     }
 

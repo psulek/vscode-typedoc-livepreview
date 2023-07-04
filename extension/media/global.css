@@ -82,6 +82,7 @@ footer {
 }
 
 footer .typedoclogo {
+    /* color:cornflowerblue; */
     margin-left: 5px;
     padding-left: 20px;
     text-decoration: none;
@@ -99,7 +100,7 @@ footer .typedoclogo {
     background-color: var(--vscode-input-background);
     /* color: gray; */
     padding: 5px;
-    font-size: 9pt;
+    font-size: 10pt;
     margin: 0 0 10px 0;
     
 }
