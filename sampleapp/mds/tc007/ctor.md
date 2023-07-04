@@ -1,4 +1,4 @@
-# Constructor: constructor()
+# constructor()
 
 ```ts
 new default<K, V>(): default< K, V >

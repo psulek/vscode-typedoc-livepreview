@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as MarkdownIt from 'markdown-it';
-import { getUri, context, webViewPanelType, getMediaUri, setTheme } from './shared';
+import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig } from './shared';
 import { asyncDebounce } from './utils';
 import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastFileName, resetCache } from './converter';
 
@@ -96,8 +96,8 @@ export class ShowPreviewCommand {
 
             const tempfile = getUri('preview.ts').fsPath;
             await this.saveTempFile(tempfile, activeEditor.document.getText());
-
-            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode);
+            
+            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, getConfig());
             html = this.md.render(markdown);
         } else {
             html = `<p><span style="color: red;">Unsupported file <b>${this.lastFile}</b></span>.<br/> Only typescript files are supported</p>`;

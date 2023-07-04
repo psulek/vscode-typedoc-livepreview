@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { ExtensionConfig } from './types';
 
 export type VsCodeTheme = 'light' | 'dark';
 
@@ -30,11 +31,8 @@ export const configKeys = {
     emptySignatures: 'TypeDocLivePreview.emptySignatures'
 };
 
-export type ConfigType = {
-    hideEmptySignatures: boolean;
-};
 
-export function getConfig(): ConfigType {
+export function getConfig(): ExtensionConfig {
     const cfg = vscode.workspace.getConfiguration();
     const emptySignatures = cfg.get(configKeys.emptySignatures) as string;
     return {

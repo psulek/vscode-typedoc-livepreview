@@ -1,3 +1,7 @@
+// testcase: copy1|9-17
+// testcase: copy2|19-25
+// testcase: copy3|27-34
+
 type NoParamCallbackWithUndefined = (err: Error | null | undefined) => void;
 type CopyOptions = {};
 
@@ -28,4 +32,3 @@ declare function copy(src: string, dest: string, callback?: NoParamCallbackWithU
  * @param callback - param `callback` 3
  */
 declare function copy(src: string, dest: string, options: CopyOptions, callback: NoParamCallbackWithUndefined): void;
-

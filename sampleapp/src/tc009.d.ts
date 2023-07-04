@@ -1,8 +1,10 @@
+// testcase: pathExists1|12-41
+// testcase: pathExists2|42-42
+// testcase: pathExistsSync|43-47
+
 /// <reference types="node" />
 
 import * as fs from 'fs';
-import * as jsonfile from 'jsonfile';
-import { StringifyOptions } from 'jsonfile/utils';
 
 export * from 'fs';
 

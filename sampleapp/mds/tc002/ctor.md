@@ -1,4 +1,4 @@
-# Constructor: constructor()
+# constructor()
 
 ```ts
 new ConsoleLogger(DEBUG): ConsoleLogger

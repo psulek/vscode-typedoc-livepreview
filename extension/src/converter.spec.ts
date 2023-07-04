@@ -4,8 +4,9 @@ import * as process from 'process';
 import * as fse from 'fs-extra';
 //const chalk = require('chalk');
 import * as chalk from 'chalk';
-import { convertTypeDocToMarkdown } from './converter';
+import { convertTypeDocToMarkdown, resetCache } from './converter';
 import { arraySortBy, findFiles, promiseEachSeries, readFileLinesUntil } from './utils';
+import { ExtensionConfig } from './types';
 
 const fileHeader = `// testcase:`;
 const log = console.log;
@@ -24,7 +25,7 @@ async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
-        // const filterTests = 'tc007.ts';
+        // const filterTests = 'tc010.ts';
         const filterTests = '';
 
         const colorNumber = chalk.blueBright;
@@ -47,6 +48,8 @@ async function main() {
                 succeed: 0
             }
         };
+
+        const config: ExtensionConfig = { hideEmptySignatures: true };
 
         await promiseEachSeries(testCases, async (testCase, idx) => {
             if (filterTests && filterTests !== testCase) {
@@ -89,13 +92,14 @@ async function main() {
 
                         // load all into cache
                         //const md_firstLine = await convertTypeDocToMarkdown(file, file, 1, 'content');
-                        await convertTypeDocToMarkdown(file, file, 0, 'content');
+                        resetCache();
+                        await convertTypeDocToMarkdown(file, file, 0, 'content', config);
                         const baseFileName = path.parse(testCase).name;
 
                         await promiseEachSeries(fileLines.values(), async test => {
                             const line_start = test.start;
                             //const md_start = line_start === 1 ? md_firstLine : await convertTypeDocToMarkdown(file, file, line_start, 'cursor');
-                            const md_start = await convertTypeDocToMarkdown(file, file, line_start, 'cursor');
+                            const md_start = await convertTypeDocToMarkdown(file, file, line_start, 'cursor', config);
 
                             const expectedFileBase = path.join(baseFileName, `${test.id}.md`);
 
@@ -114,10 +118,10 @@ async function main() {
                             } else {
                                 log(`\t• found expected file ` + colorFile(expectedFileBase));
                                 if (md_start === expectedFileContent) {
-                                    results.conversion.succeed ++;
+                                    results.conversion.succeed++;
                                     log(`\t• test case '${test.id}' - conversion validity ` + colorSuccess('passed'));
                                 } else {
-                                    results.conversion.failed ++;
+                                    results.conversion.failed++;
                                     const verifiedFileBase = path.join(baseFileName, `${test.id}-verified.md`);
                                     log(`\t• test case '${test.id}' - conversion validity ` + colorError('failed') + `, expected file '` +
                                         colorFile(expectedFileBase) + `' does not match file '` + colorFile(verifiedFileBase) + `'`);
@@ -131,7 +135,7 @@ async function main() {
                             let successLines = 0;
                             let failedLines: number[] = [];
                             for (let line = line_start; line <= endLine; line++) {
-                                const md = await convertTypeDocToMarkdown(file, file, line, 'cursor');
+                                const md = await convertTypeDocToMarkdown(file, file, line, 'cursor', config);
                                 if (md === md_start) {
                                     successLines++;
                                     results.lines.succeed++;

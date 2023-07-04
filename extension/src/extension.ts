@@ -35,8 +35,6 @@ export function activate(context: vscode.ExtensionContext) {
             }
         })
     );
-
-    //new ShowPreviewCommand(context, md);
 }
 
 // This method is called when your extension is deactivated

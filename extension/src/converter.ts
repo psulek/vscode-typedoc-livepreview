@@ -5,7 +5,7 @@ import {
     ContainerReflection, Comment, SignatureReflection
 } from 'typedoc';
 import { arraySortBy } from './utils';
-import { getConfig } from './shared';
+import { ExtensionConfig } from './types';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const { BasePath } = require('typedoc');
@@ -17,7 +17,6 @@ type DeclarationReflectionInfo = {
     endline: number;
     model: DeclarationReflection;
     comment?: Comment;
-    //signatures?: SignatureReflection[];
     signature?: SignatureReflection;
 };
 
@@ -74,13 +73,11 @@ const tscOptions = {
     preserveConstEnums: true
 };
 
-//const fixMarkdown = (val: string): string => val.replace(/<br \/>/g, '@');
-
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
-    editorLine: number, mode: PreviewUpdateMode): Promise<string> {
+    editorLine: number, mode: PreviewUpdateMode, config: ExtensionConfig): Promise<string> {
     let markdown = '';
     const compile = mode === 'content' || lastConversion.originFilename !== originFilename || lastConversion.reflections.length === 0;
-    const hideEmptySignatures = getConfig().hideEmptySignatures;
+    const hideEmptySignatures = config.hideEmptySignatures;
 
     const compiledReflections: DeclarationReflectionInfo[] = [];
 
@@ -219,6 +216,22 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                         bodyStartLine = getSourceLine(body.pos);
                     }
 
+                    const declarationEndLine = getSourceLine(valueDeclaration.end);
+                    if ([ReflectionKind.TypeAlias].includes(model.kind) && declarationEndLine > endline &&
+                        model.type?.type !== 'reflection') {
+                        endline = declarationEndLine;
+                    }
+
+                    if (valueDeclaration.typeParameters && valueDeclaration.typeParameters.length > 0 &&
+                        model.type?.type !== 'reflection') {
+                        valueDeclaration.typeParameters.forEach((tp: any) => {
+                            const line = tp.end ? getSourceLine(tp.end) : 0;
+                            if (line > endline) {
+                                endline = line;
+                            }
+                        });
+                    }
+
                     let allowAdd = true;
 
                     // when property, check if startline is same as startline of constructor of same class, 
@@ -276,10 +289,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                             if (signatures && signatures.length > 0) {
                                 signatures.forEach(sig => {
 
-                                    //project.get
-
-                                    // getSourceLine(project.reflectionIdToSymbolMap.get(project.reflectionChildren.get(sig.id)[0]).valueDeclaration.parent.jsDoc[0].pos)
-
                                     const childRefs = (project as any).getReflectionChildsByParentId(sig.id);
                                     if (childRefs && Array.isArray(childRefs) && childRefs.length > 0) {
                                         const childSymbol = (project as any).getSymbolByReflectionId(childRefs[0]);
@@ -288,8 +297,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                             if (childRef) {
                                                 const childParent = findParentSignature(childRef);
                                                 if (childParent) {
-                                                    //const childParentSourceFile = findSourceFileName(childParent);
-                                                    //const validFile = childParentSourceFile === normalizedSourceFile;
                                                     if (isSourceFileValid(childParent) && childSymbol.valueDeclaration && childSymbol.valueDeclaration.parent) {
                                                         const jsDoc = (childSymbol.valueDeclaration.parent as any).jsDoc;
                                                         if (jsDoc && Array.isArray(jsDoc) && jsDoc.length > 0) {
@@ -321,11 +328,17 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
                     let modelToIterate = model;
                     let iterateChilds = model.children && model.children.length > 0 && validKindForChildren.includes(model.kind);
-                    if ([ReflectionKind.TypeAlias].includes(model.kind) &&
-                        model instanceof DeclarationReflection &&
+                    // if ([ReflectionKind.TypeAlias].includes(model.kind) &&
+                    //     model instanceof DeclarationReflection &&
+                    //     model.type?.type === 'reflection' &&
+                    //     model.type?.declaration instanceof DeclarationReflection &&
+                    //     model.type.declaration.children?.some(x => x.kind === ReflectionKind.Property)
+                    // ) {
+                    if (model instanceof DeclarationReflection &&
                         model.type?.type === 'reflection' &&
                         model.type?.declaration instanceof DeclarationReflection &&
-                        model.type.declaration.children?.some(x => x.kind === ReflectionKind.Property)
+                        model.type.declaration.children &&
+                        model.type.declaration.children.length > 0
                     ) {
                         iterateChilds = true;
                         modelToIterate = model.type.declaration;
@@ -339,8 +352,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         };
 
         recurseChildren(project);
-
-        //lastConversion.reflections = arraySortBy(lastConversion.reflections, x => x.startline, 'asc');
     }
 
 
@@ -370,7 +381,8 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
     if (!useCache) {
         let lineReflection: DeclarationReflectionInfo | undefined = undefined;
-        if (editorLine > 1) {
+        //if (editorLine > 1) {
+        if (editorLine > 0) {
             for (let i = 0; i < lastConversion.reflections.length; i++) {
                 const item = lastConversion.reflections[i];
                 if (editorLine === item.startline) {
@@ -389,7 +401,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
             let result = '';
             let model = reflection.model;
             let comment = reflection.comment;
-            //let signatures = reflection.signatures;
             let signature = reflection.signature;
 
             const page = new PageEvent(PageEvent.BEGIN, model);
@@ -424,10 +435,14 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
                 if (signature) {
                     md.push(context.signatureMember(signature, headingLevel));
-                }
-                else if (comment) {
+                } else if (comment) {
                     if (model instanceof DeclarationReflection) {
                         md.push(context.comment(comment, headingLevel));
+                    }
+
+                    if (model.typeParameters && model.typeParameters.length > 0) {
+                        md.push(`## Type parameters`);
+                        md.push(context.typeParametersTable(model.typeParameters));
                     }
                 }
 
@@ -444,7 +459,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
             result = result.trimEnd();
             if (result && result.length > 0) {
-                //const cache = lastConversion.markdowns.find(x => editorLine >= x.startline && editorLine <= x.endline);
                 const cache = lastConversion.markdowns.find(x => x.startline === reflection.startline && x.endline === reflection.endline);
                 if (cache) {
                     cache.markdown = result;
@@ -456,12 +470,21 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
             return result;
         };
 
+        let foundRef = false;
         arraySortBy(compiledReflections, x => x.startline, 'asc').forEach(reflection => {
-            const md = renderReflection(reflection);
-            if (reflection === lineReflection) {
-                markdown = md;
+            if (!foundRef) {
+                if (reflection === lineReflection) {
+                    foundRef = true;
+                    const md = renderReflection(reflection);
+                    markdown = md;
+
+                }
             }
         });
+
+        if (!foundRef && lineReflection) {
+            markdown = renderReflection(lineReflection);
+        }
     }
 
     lastConversion.editorLine = editorLine;

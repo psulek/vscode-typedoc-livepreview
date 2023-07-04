@@ -81,7 +81,7 @@
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
         "test": "node ./out/test/runTest.js",
-        "test-cases": "node ./out/typedoc.spec.js",
+        "test-cases": "node ./out/converter.spec.js",
         "create-patch": "npx patch-package typedoc"
     },
     "devDependencies": {
