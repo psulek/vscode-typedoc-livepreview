@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import { EOL } from 'os';
 import * as path from 'path';
 import * as process from 'process';
 import * as fse from 'fs-extra';
@@ -25,7 +26,7 @@ async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
-        // const filterTests = 'tc010.ts';
+        // const filterTests = 'tc001.ts';
         const filterTests = '';
 
         const colorNumber = chalk.blueBright;
@@ -92,7 +93,7 @@ async function main() {
 
                         // load all into cache
                         //const md_firstLine = await convertTypeDocToMarkdown(file, file, 1, 'content');
-                        resetCache();
+                        //resetCache();
                         await convertTypeDocToMarkdown(file, file, 0, 'content', config);
                         const baseFileName = path.parse(testCase).name;
 
