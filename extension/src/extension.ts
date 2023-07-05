@@ -5,14 +5,16 @@ import { previewPanel } from './previewCommand';
 export function activate(context: vscode.ExtensionContext) {
     init(context);
 
-    const showPreview = (uri: vscode.Uri, column: vscode.ViewColumn) => {
-        if (!isTypescriptFile(uri)) {
+    const showPreview = (column: vscode.ViewColumn, textEditor?: vscode.TextEditor, uri?: vscode.Uri) => {
+        const isValidFile = (uri && isTypescriptFile(uri)) || (textEditor && isTypescriptFile(textEditor.document));
+        if (!isValidFile) {
             return;
         }
 
         previewPanel.show({
             viewColumn: column,
-            fsPath: uri.fsPath,
+            fsPath: uri && uri.fsPath,
+            textEditor: textEditor
         });
     };
 
@@ -23,7 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'typedocPreview.showPreview',
-            (uri: vscode.Uri) => showPreview(uri || vscode.window.activeTextEditor?.document.uri, vscode.ViewColumn.Active)
+            (uri: vscode.Uri) => showPreview(vscode.ViewColumn.Active, vscode.window.activeTextEditor, uri)
         ),
 
         vscode.commands.registerCommand(
@@ -38,7 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         vscode.commands.registerTextEditorCommand(
             'typedocPreview.showPreviewToSide',
-            textEditor => showPreview(textEditor.document.uri, vscode.ViewColumn.Beside)),
+            textEditor => showPreview(vscode.ViewColumn.Beside, textEditor)),
 
         vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration(configKeys.emptySignatures)) {

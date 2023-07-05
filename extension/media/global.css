@@ -136,6 +136,10 @@ footer .typedoclogo {
     padding-left: 20px;
 }
 
+.display-flex {
+    display: flex;
+}
+
 .display-block {
     display: block;
 }

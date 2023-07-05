@@ -18,13 +18,20 @@ export function init(ctx: vscode.ExtensionContext): void {
 export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument): boolean {
     //return activeTextEditor?.document.languageId === 'typescript';
     let uri: vscode.Uri;
+    const isUri = uriOrDocument instanceof vscode.Uri;
     if ('uri' in uriOrDocument) {
         uri = uriOrDocument.uri;
     } else {
         uri = uriOrDocument;
     }
 
-    return uri ? supportedExtensions.includes(path.extname(uri.fsPath)) : false;
+    //return uri ? supportedExtensions.includes(path.extname(uri.fsPath)) : false;
+    let supported = uri ? supportedExtensions.includes(path.extname(uri.fsPath)) : false;
+    if (!supported && !isUri) {
+        supported = uriOrDocument.languageId === 'typescript';
+    }
+
+    return supported;
 }
 
 export const configKeys = {
