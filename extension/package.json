@@ -16,12 +16,22 @@
     "main": "./out/extension.js",
     "contributes": {
         "commands": [{
-                "category": "TypeDoc Preview",
+                "category": "TypeDoc Live Preview",
                 "command": "typedocPreview.showPreview",
                 "title": "Open TypeDoc Preview"
             },
             {
-                "category": "TypeDoc Preview",
+                "category": "TypeDoc Live Preview",
+                "command": "typedocPreview.showEmptySignatures",
+                "title": "Show empty signatures"
+            },
+            {
+                "category": "TypeDoc Live Preview",
+                "command": "typedocPreview.hideEmptySignatures",
+                "title": "Hide empty signatures"
+            },
+            {
+                "category": "TypeDoc Live Preview",
                 "command": "typedocPreview.showPreviewToSide",
                 "title": "Open TypeDoc Preview to the Side",
                 "icon": {
@@ -66,7 +76,7 @@
                         "`show` - shows signatures even when they are empty",
                         "`hide` - do not show empty signatures"
                     ],
-                    "default": "hide",
+                    "default": "show",
                     "description": "Show empty signatures",
                     "scope": "window"
                 }
@@ -110,6 +120,7 @@
         "lodash.throttle": "^4.1.1",
         "markdown-it": "13.0.1",
         "typedoc": ">=0.24.8",
-        "typedoc-plugin-markdown": "^4.0.0-next.16"
+        "typedoc-plugin-markdown": "^4.0.0-next.16",
+        "crlf-normalize": "1.0.19"
     }
 }

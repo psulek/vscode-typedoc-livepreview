@@ -19,6 +19,9 @@ class Deferred<T> {
     }
 }
 
+export async function delay(ms: number): Promise<void> {
+    return new Promise<void>(resolve => setTimeout(resolve, ms));
+}
 
 export function findFiles(globPattern: string | string[], options?: globOptions & { dotRelative?: boolean }): Promise<string[]> {
     return new Promise<string[]>((resolve, reject) => glob(globPattern, options, (err: Error, result: string[]) => err ? reject(err) : resolve(result)));

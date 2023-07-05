@@ -12,3 +12,7 @@ function calculateMagic(input: string): Promise<number> {
 }
 
 const b = '123';
+
+function isEmpty(val: string): boolean {
+    return true;
+}

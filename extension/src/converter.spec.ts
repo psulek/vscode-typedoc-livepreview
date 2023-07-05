@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { EOL } from 'os';
 import * as path from 'path';
 import * as process from 'process';
 import * as fse from 'fs-extra';
-//const chalk = require('chalk');
 import * as chalk from 'chalk';
-import { convertTypeDocToMarkdown, resetCache } from './converter';
+import * as normalize from 'crlf-normalize';
+import { convertTypeDocToMarkdown } from './converter';
 import { arraySortBy, findFiles, promiseEachSeries, readFileLinesUntil } from './utils';
 import { ExtensionConfig } from './types';
 
@@ -26,7 +25,7 @@ async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
-        // const filterTests = 'tc001.ts';
+        // const filterTests = 'tc009.d.ts';
         const filterTests = '';
 
         const colorNumber = chalk.blueBright;
@@ -91,19 +90,14 @@ async function main() {
                     try {
                         log(`\t• found ` + colorNumber(fileLines.size) + ' test case(s)');
 
-                        // load all into cache
-                        //const md_firstLine = await convertTypeDocToMarkdown(file, file, 1, 'content');
-                        //resetCache();
                         await convertTypeDocToMarkdown(file, file, 0, 'content', config);
                         const baseFileName = path.parse(testCase).name;
 
                         await promiseEachSeries(fileLines.values(), async test => {
                             const line_start = test.start;
-                            //const md_start = line_start === 1 ? md_firstLine : await convertTypeDocToMarkdown(file, file, line_start, 'cursor');
-                            const md_start = await convertTypeDocToMarkdown(file, file, line_start, 'cursor', config);
+                            const md = await convertTypeDocToMarkdown(file, file, line_start, 'cursor', config);
 
                             const expectedFileBase = path.join(baseFileName, `${test.id}.md`);
-
                             await fse.ensureDir(path.join(dirMarkdowns, baseFileName));
 
                             const expectedFile = path.join(dirMarkdowns, expectedFileBase);
@@ -112,13 +106,18 @@ async function main() {
 
                             if (!expectedFileExist) {
                                 log(`\t• expected file ` + colorFile(expectedFileBase) + ' not exist, creating new...');
-                                if (md_start.length === 0) {
+                                if (md.length === 0) {
                                     log(`\t• conversion to markdown is ` + colorError('empty') + ' !');
                                 }
-                                await fse.writeFile(expectedFile, md_start, { encoding: 'utf8' });
+                                await fse.writeFile(expectedFile, md, { encoding: 'utf8' });
                             } else {
                                 log(`\t• found expected file ` + colorFile(expectedFileBase));
-                                if (md_start === expectedFileContent) {
+                                let contentEquals = expectedFileContent === md;
+                                if (!contentEquals && expectedFileContent !== undefined) {
+                                    contentEquals = normalize.crlf(md, normalize.LF) === normalize.crlf(expectedFileContent, normalize.LF);
+                                }
+
+                                if (contentEquals) {
                                     results.conversion.succeed++;
                                     log(`\t• test case '${test.id}' - conversion validity ` + colorSuccess('passed'));
                                 } else {
@@ -128,7 +127,7 @@ async function main() {
                                         colorFile(expectedFileBase) + `' does not match file '` + colorFile(verifiedFileBase) + `'`);
 
                                     const verifiedFile = path.join(dirMarkdowns, verifiedFileBase);
-                                    await fse.writeFile(verifiedFile, md_start, { encoding: 'utf8' });
+                                    await fse.writeFile(verifiedFile, md, { encoding: 'utf8' });
                                 }
                             }
 
@@ -137,7 +136,7 @@ async function main() {
                             let failedLines: number[] = [];
                             for (let line = line_start; line <= endLine; line++) {
                                 const md = await convertTypeDocToMarkdown(file, file, line, 'cursor', config);
-                                if (md === md_start) {
+                                if (md === md) {
                                     successLines++;
                                     results.lines.succeed++;
                                 } else {

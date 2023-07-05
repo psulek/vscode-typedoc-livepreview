@@ -8,6 +8,6 @@
 		}
     ],
     "settings": {
-        "svg.preview.background": "dark-transparent"
+        "svg.preview.background": "custom"
     }
 }

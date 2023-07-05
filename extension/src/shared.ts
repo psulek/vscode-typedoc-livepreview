@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ExtensionConfig } from './types';
+import { EmptySignaturesTypes, ExtensionConfig } from './types';
 
 export type VsCodeTheme = 'light' | 'dark';
 
@@ -36,8 +36,15 @@ export function getConfig(): ExtensionConfig {
     const cfg = vscode.workspace.getConfiguration();
     const emptySignatures = cfg.get(configKeys.emptySignatures) as string;
     return {
-        hideEmptySignatures: emptySignatures === 'hide'
+        hideEmptySignatures: emptySignatures === EmptySignaturesTypes.hide
     };
+}
+
+export async function updateConfig(newConfig: ExtensionConfig) {
+    const emptySignatures = newConfig.hideEmptySignatures ? EmptySignaturesTypes.hide : EmptySignaturesTypes.show;
+
+    //const target = vscode.workspace.workspaceFolders ? vscode.ConfigurationTarget.WorkspaceFolder : vscode.ConfigurationTarget.Global;
+    await vscode.workspace.getConfiguration().update(configKeys.emptySignatures, emptySignatures, vscode.ConfigurationTarget.Global);
 }
 
 export function setTheme(vsThemeKind: vscode.ColorThemeKind): void {

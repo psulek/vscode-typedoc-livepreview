@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { configKeys, init, isTypescriptFile, setTheme } from './shared';
+import { configKeys, init, isTypescriptFile, setTheme, updateConfig } from './shared';
 import { previewPanel } from './previewCommand';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -16,14 +16,25 @@ export function activate(context: vscode.ExtensionContext) {
         });
     };
 
+    
+
     setTheme(vscode.window.activeColorTheme.kind);
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'typedocPreview.showPreview',
-            function (uri: vscode.Uri) {
-                return showPreview(uri || vscode.window.activeTextEditor?.document.uri, vscode.ViewColumn.Active);
-            }),
+            (uri: vscode.Uri) => showPreview(uri || vscode.window.activeTextEditor?.document.uri, vscode.ViewColumn.Active)
+        ),
+
+        vscode.commands.registerCommand(
+            'typedocPreview.showEmptySignatures',
+            () => updateConfig({hideEmptySignatures: false})
+        ),
+
+        vscode.commands.registerCommand(
+            'typedocPreview.hideEmptySignatures',
+            () => updateConfig({hideEmptySignatures: true})
+        ),
 
         vscode.commands.registerTextEditorCommand(
             'typedocPreview.showPreviewToSide',

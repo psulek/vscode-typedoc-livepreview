@@ -3,8 +3,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as MarkdownIt from 'markdown-it';
 import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig } from './shared';
-import { asyncDebounce } from './utils';
-import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastFileName, resetCache } from './converter';
+import { asyncDebounce, delay } from './utils';
+import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastConvertedFile, resetCache } from './converter';
 
 let debouncedUpdatePreview: Function;
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -23,7 +23,6 @@ export class ShowPreviewCommand {
     private md!: MarkdownIt;
 
     private lastFile = '';
-
     private currentFile = '';
 
     constructor() {
@@ -71,7 +70,23 @@ export class ShowPreviewCommand {
             }
         });
 
+        webviewPanel.webview.onDidReceiveMessage(message => {
+            switch (message.command) {
+                case 'reload':
+                    this.reload(message.file, message.line);
+                    return;
+            }
+        });
+
         this.webviewPanel = webviewPanel;
+    }
+
+    private async reload(file: string, line: number) {
+        this.resetWebviewPanel();
+//        await delay(500);
+
+        const editor = vscode.window.visibleTextEditors.find(x => x.document.fileName === file);
+        this.updatePreviewWindow('content', editor);
     }
 
     private async updatePreview(): Promise<void> {
@@ -82,21 +97,24 @@ export class ShowPreviewCommand {
         await this.updatePreviewWindow('cursor');
     }
 
-    private async updatePreviewWindow(updateMode: PreviewUpdateMode): Promise<void> {
+    private async updatePreviewWindow(updateMode: PreviewUpdateMode, textEditor?: vscode.TextEditor): Promise<void> {
         this.lastFile = this.currentFile;
-        const activeEditor = vscode.window.activeTextEditor;
+        const activeEditor = textEditor ?? vscode.window.activeTextEditor;
         if (!activeEditor || !this.webviewPanel) { return; }
 
+        let lineNumber = 1;
+        let originFilename = '';
+
         let html = '';
-        if (this.isSupportedFileOpened()) {
-            const lineNumber = activeEditor.selection.active.line + 1;
-            const originFilename = activeEditor.document.fileName;
+        if (this.isSupportedFileOpened(textEditor)) {
+            lineNumber = activeEditor.selection.active.line + 1;
+            originFilename = activeEditor.document.fileName;
 
             this.webviewPanel.title = `TypeDoc: ` + path.parse(originFilename).base;
 
             const tempfile = getUri('preview.ts').fsPath;
             await this.saveTempFile(tempfile, activeEditor.document.getText());
-            
+
             const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, getConfig());
             html = this.md.render(markdown);
         } else {
@@ -106,6 +124,7 @@ export class ShowPreviewCommand {
         if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
 
         this.webviewPanel.webview.html = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
+        this.webviewPanel.webview.postMessage({ command: 'update', file: originFilename, line: lineNumber });
     }
 
     private resetWebviewPanel(): void {
@@ -126,7 +145,7 @@ export class ShowPreviewCommand {
         const highlightCssUri = getMediaUri(webview, 'highlight-github.min.css', true);
         const globalCssUri = getMediaUri(webview, 'global.css', false);
 
-        const libJsUri = getMediaUri(webview, 'lib.js', false);
+        const mainJsUri = getMediaUri(webview, 'main.js', false);
         const highlightJsUri = getMediaUri(webview, 'highlight.min.js', false);
         const highlightTscJsUri = getMediaUri(webview, 'highlight-tsc.min.js', false);
 
@@ -154,13 +173,16 @@ export class ShowPreviewCommand {
 				<title>TypeDoc: Live Preview</title>
 			</head>
 			<body class="markdown-body">
+                <header>
+                    <a href="#" class="btn btn-reload" title="Reload" id="btnReload">&nbsp;</a>
+                </header>
                 <div class="content">
                     ${html}
                 </div>
                 <footer>
                     Powered by <a href="https://typedoc.org" class="typedoclogo" target="_blank">TypeDoc</a>
                 </footer>
-                <script nonce="${nonce}" src="${libJsUri}"></script>
+                <script nonce="${nonce}" src="${mainJsUri}"></script>
 			</body>
 			</html>`;
     }
@@ -174,8 +196,8 @@ export class ShowPreviewCommand {
         return text;
     }
 
-    private isSupportedFileOpened(): boolean {
-        const { activeTextEditor } = vscode.window;
+    private isSupportedFileOpened(textEditor?: vscode.TextEditor): boolean {
+        const activeTextEditor = textEditor ?? vscode.window.activeTextEditor;
         return activeTextEditor?.document.languageId === 'typescript';
     }
 
@@ -187,7 +209,8 @@ export class ShowPreviewCommand {
         context.subscriptions.push(
             vscode.window.onDidChangeActiveColorTheme(theme => {
                 setTheme(theme.kind);
-                this.updatePreviewCursorChanged();
+                //this.reload();
+                //this.updatePreviewCursorChanged();
             }),
 
             vscode.workspace.onDidChangeTextDocument(() => {
@@ -208,11 +231,11 @@ export class ShowPreviewCommand {
             }),
 
             vscode.window.onDidChangeVisibleTextEditors(() => {
-                const lastConvertFile = getLastFileName();
-                if (!vscode.window.visibleTextEditors.some(x => x.document.fileName === lastConvertFile)) {
+                const lastConvertedFile = getLastConvertedFile();
+                if (!vscode.window.visibleTextEditors.some(x => x.document.fileName === lastConvertedFile)) {
                     this.resetWebviewPanel();
                 }
-            })
+            }),
         );
     }
 }

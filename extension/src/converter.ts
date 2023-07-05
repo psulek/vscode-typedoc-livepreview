@@ -1,4 +1,3 @@
-import { EOL } from 'os';
 import * as path from 'path';
 import * as ts from 'typescript';
 import {
@@ -40,7 +39,7 @@ resetCache();
 
 const validKindForChildren = [ReflectionKind.Project, ReflectionKind.Module, ReflectionKind.Namespace, ReflectionKind.Class, ReflectionKind.Interface];
 
-export function getLastFileName(): string {
+export function getLastConvertedFile(): string {
     return lastConversion.originFilename;
 }
 
@@ -335,11 +334,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                     let modelToIterate = model;
                     let iterateChilds = model.children && model.children.length > 0 && validKindForChildren.includes(model.kind);
                     // if ([ReflectionKind.TypeAlias].includes(model.kind) &&
-                    //     model instanceof DeclarationReflection &&
-                    //     model.type?.type === 'reflection' &&
-                    //     model.type?.declaration instanceof DeclarationReflection &&
-                    //     model.type.declaration.children?.some(x => x.kind === ReflectionKind.Property)
-                    // ) {
                     if (model instanceof DeclarationReflection &&
                         model.type?.type === 'reflection' &&
                         model.type?.declaration instanceof DeclarationReflection &&
@@ -435,7 +429,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
                 let headingLevel = 1;
                 if (pageTitle && pageTitle.length > 0) {
-                    //md.push(`# ${pageTitle}` + EOL);
                     md.push(`# ${pageTitle}`);
                     headingLevel++;
                 }
@@ -448,20 +441,10 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                     }
 
                     if (model.typeParameters && model.typeParameters.length > 0) {
-                        //md.push(`## Type parameters` + EOL);
                         md.push(`## Type parameters`);
                         md.push(context.typeParametersTable(model.typeParameters));
                     }
                 }
-
-                //const pattern = /\n/gi;
-                //mdString = md.join(`${EOL}${EOL}`).replace(pattern, EOL);
-                //mdString = md.join(`${EOL}${EOL}`).trimEnd();
-
-                // const pattern = /\n/g;
-                // md = md.map(x=>x.replace(pattern, EOL));
-
-                // mdString = md.join(`${EOL}`).trimEnd();
 
                 mdString = md.join('\n\n').trimEnd();
                 result = mdString;
