@@ -121,6 +121,7 @@
         "markdown-it": "13.0.1",
         "typedoc": ">=0.24.8",
         "typedoc-plugin-markdown": "^4.0.0-next.16",
-        "crlf-normalize": "1.0.19"
+        "crlf-normalize": "1.0.19",
+        "date-fns": "2.29.3"
     }
 }

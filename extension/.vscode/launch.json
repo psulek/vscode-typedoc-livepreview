@@ -6,7 +6,7 @@
 	"version": "0.2.0",
 	"configurations": [
         {
-            "name": "Run tests",
+            "name": "Tests",
             "request": "launch",
             "runtimeArgs": [
                 "run-script",
@@ -21,7 +21,7 @@
             "preLaunchTask": "watch"
         },
 		{
-			"name": "Run Extension",
+			"name": "Extension",
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
@@ -29,19 +29,6 @@
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
-			],
-			"preLaunchTask": "${defaultBuildTask}"
-		},
-		{
-			"name": "Extension Tests",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
-			],
-			"outFiles": [
-				"${workspaceFolder}/out/test/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
 		}

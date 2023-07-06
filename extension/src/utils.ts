@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as events from 'events';
 import * as readline from 'readline';
+import * as datefns from 'date-fns';
 const debounce = require('lodash.debounce');
 import type { IOptions as globOptions } from 'glob';
 const glob = require('glob-all');
@@ -17,6 +18,20 @@ class Deferred<T> {
         });
         Object.freeze(this);
     }
+}
+
+export function calcDuration(start: number, end: number): string {
+    const duration = datefns.intervalToDuration({ start, end });
+    const result = datefns.formatDuration(duration).trimEnd();
+    return result === '' ? '0 seconds' : result;
+}
+
+export function cloneObj<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj)) as T;
+}
+
+export function getFullTimestamp(): string {
+    return datefns.format(Date.now(), '[kk:mm:ss.sss]');
 }
 
 export async function delay(ms: number): Promise<void> {

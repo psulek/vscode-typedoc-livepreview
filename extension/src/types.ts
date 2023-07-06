@@ -1,5 +1,6 @@
 export type ExtensionConfig = {
     hideEmptySignatures: boolean;
+    logging?: boolean;
 };
 
 export enum EmptySignaturesTypes {

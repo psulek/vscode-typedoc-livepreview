@@ -4,11 +4,11 @@ import {
     Application, DeclarationReflection, PageEvent, Reflection, LogLevel, ReflectionKind,
     ContainerReflection, Comment, SignatureReflection
 } from 'typedoc';
-import { arraySortBy } from './utils';
+import { arraySortBy, calcDuration } from './utils';
 import { ExtensionConfig } from './types';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const { BasePath } = require('typedoc');
+const { BasePath, Enum } = require('typedoc');
 
 export type PreviewUpdateMode = 'content' | 'cursor';
 
@@ -34,6 +34,8 @@ type ConversionCache = {
     reflections: DeclarationReflectionInfo[]
 };
 
+const debugs: string[] = [];
+
 let lastConversion: ConversionCache;
 resetCache();
 
@@ -51,11 +53,19 @@ export function resetCache(): void {
         app: undefined as unknown as Application,
         reflections: [] as DeclarationReflectionInfo[]
     };
+    debugs.length = 0;
 }
 
 const tscOptions = {
-    target: 7,
-    module: 6,
+    //target: 7,
+    //module: 6,
+    
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.ESNext,
+
+    // noLib: true,
+    // lib: ['es5'],
+
     declaration: false,
     declarationMap: false,
     strict: true,
@@ -73,11 +83,19 @@ const tscOptions = {
     preserveConstEnums: true
 };
 
+let convertCounter = 0;
+
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
     editorLine: number, mode: PreviewUpdateMode, config: ExtensionConfig): Promise<string> {
     let markdown = '';
+    const dateNow = Date.now();
+    const logging = config.logging ?? false;
+    const cnt = (++convertCounter).toString().padStart(4, '0');
+    const log = (msg: string) => logging && console.log(`[typedoc.preview_${cnt}] ${msg}`);
+
     const differentFile = lastConversion.originFilename !== originFilename;
     if (differentFile) {
+        log(`resetting cache`);
         resetCache();
     }
 
@@ -87,6 +105,9 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
     const compiledReflections: DeclarationReflectionInfo[] = [];
 
     if (compile) {
+        debugs.length = 0;
+        log(`compiling file: ${originFilename}`);
+
         const normalizedSourceFile = BasePath.normalize(sourceFile);
 
         lastConversion.editorLine = editorLine;
@@ -186,12 +207,13 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         const recurseChildren = (parent: ContainerReflection): void => {
             if (parent.children) {
                 parent.children.forEach(model => {
-                    if (!(model instanceof DeclarationReflection && model.sources && model.sources.length > 0)) {
+                    if (!(model instanceof DeclarationReflection && model.sources && model.sources.length > 0 && model.inheritedFrom === undefined)) {
                         return;
                     }
 
                     const symbol = project.getSymbolFromReflection(model)!;
-                    const modelSources = model.sources[0];
+                    const modelKind = ReflectionKind.singularString(model.kind);
+                    let modelSources = model.sources[0];
                     const modelSourcesFileName = modelSources.fullFileName;
 
                     if (modelSourcesFileName !== normalizedSourceFile) {
@@ -202,6 +224,25 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                     if (valueDeclaration === undefined && symbol.declarations && symbol.declarations.length > 0) {
                         valueDeclaration = symbol.declarations[0];
                     }
+
+                    // if model is interface, we need to get correct declaration in case there is interface & declare var for same name
+                    // like it is for 'interface EventTarget' and 'declare var EventTarget'
+                    //if (model.kind === ReflectionKind.Interface && symbol.declarations) {
+                    if (symbol.declarations && symbol.declarations.length > 1 && model.sources && model.sources.length > 1) {
+                        //const sss = ts.SyntaxKind[ts.SyntaxKind.InterfaceDeclaration];
+                        //valueDeclaration = symbol.declarations.find(x => x.kind === ts.SyntaxKind.InterfaceDeclaration);
+
+                        const symbDeclaration = symbol.declarations.find(x => ts.SyntaxKind[x.kind].indexOf(modelKind) > -1);
+                        if (symbDeclaration) {
+                            valueDeclaration = symbDeclaration;
+                            const line = getSourceLine((symbDeclaration as any).name.pos);
+                            const ms = model.sources.find(x => x.line === line);
+                            if (ms) {
+                                modelSources = ms;
+                            }
+                        }
+                    }
+
 
                     let jsDoc = valueDeclaration.jsDoc && valueDeclaration.jsDoc.length > 0 ? valueDeclaration.jsDoc[0] : undefined;
                     if (jsDoc === undefined) {
@@ -322,11 +363,27 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                     }
 
                                     if (signatureFileIsValid) {
-                                        compiledReflections.push({ startline, endline, model, comment, signature: sig });
+                                        const dbg = `${startline}-${endline}`;
+                                        if (!debugs.includes(dbg)) {
+                                            debugs.push(dbg);
+                                            compiledReflections.push({ startline, endline, model, comment, signature: sig });
+                                        } else {
+                                            console.debug('');
+                                        }
+
+                                        //compiledReflections.push({ startline, endline, model, comment, signature: sig });
                                     }
                                 });
                             } else {
-                                compiledReflections.push({ startline, endline, model, comment, signature: undefined });
+                                const dbg = `${startline}-${endline}`;
+                                if (!debugs.includes(dbg)) {
+                                    debugs.push(dbg);
+                                    compiledReflections.push({ startline, endline, model, comment, signature: undefined });
+                                } else {
+                                    console.debug('');
+                                }
+
+                                //compiledReflections.push({ startline, endline, model, comment, signature: undefined });
                             }
                         }
                     }
@@ -352,8 +409,9 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         };
 
         recurseChildren(project);
-    }
 
+        log(`compiling file: ${originFilename} completed with ${compiledReflections.length} reflections in ` + calcDuration(dateNow, Date.now()));
+    }
 
     if (compiledReflections.length > 0) {
         lastConversion.reflections.push(...compiledReflections);
@@ -471,16 +529,27 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         };
 
         let foundRef = false;
-        arraySortBy(compiledReflections, x => x.startline, 'asc').forEach(reflection => {
-            if (!foundRef) {
-                if (reflection === lineReflection) {
-                    foundRef = true;
-                    const md = renderReflection(reflection);
-                    markdown = md;
+        // arraySortBy(compiledReflections, x => x.startline, 'asc').forEach(reflection => {
+        //     if (!foundRef) {
+        //         if (reflection === lineReflection) {
+        //             foundRef = true;
+        //             const md = renderReflection(reflection);
+        //             markdown = md;
 
-                }
+        //         }
+        //     }
+        // });
+
+        for (let i = 0; i < compiledReflections.length; i++) {
+            const reflection = compiledReflections[i];
+            if (reflection === lineReflection) {
+                foundRef = true;
+                const md = renderReflection(reflection);
+                markdown = md;
+                break;
             }
-        });
+        }
+
 
         if (!foundRef && lineReflection) {
             markdown = renderReflection(lineReflection);
@@ -488,5 +557,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
     }
 
     lastConversion.editorLine = editorLine;
+
+    log(`return markdown for '${originFilename}' in ` + calcDuration(dateNow, Date.now()));
     return markdown;
 }
