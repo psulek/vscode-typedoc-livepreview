@@ -1,10 +1,8 @@
 import * as fs from 'fs';
 import * as events from 'events';
 import * as readline from 'readline';
-import * as datefns from 'date-fns';
+//import * as datefns from 'date-fns';
 const debounce = require('lodash.debounce');
-import type { IOptions as globOptions } from 'glob';
-const glob = require('glob-all');
 
 class Deferred<T> {
     promise;
@@ -20,27 +18,24 @@ class Deferred<T> {
     }
 }
 
-export function calcDuration(start: number, end: number): string {
-    const duration = datefns.intervalToDuration({ start, end });
-    const result = datefns.formatDuration(duration).trimEnd();
-    return result === '' ? '0 seconds' : result;
-}
+// export function calcDuration(start: number, end: number): string {
+//     const duration = datefns.intervalToDuration({ start, end });
+//     const result = datefns.formatDuration(duration).trimEnd();
+//     return result === '' ? '0 seconds' : result;
+// }
+
+// export function getFullTimestamp(): string {
+//     return datefns.format(Date.now(), '[kk:mm:ss.sss]');
+// }
 
 export function cloneObj<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj)) as T;
-}
-
-export function getFullTimestamp(): string {
-    return datefns.format(Date.now(), '[kk:mm:ss.sss]');
 }
 
 export async function delay(ms: number): Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-export function findFiles(globPattern: string | string[], options?: globOptions & { dotRelative?: boolean }): Promise<string[]> {
-    return new Promise<string[]>((resolve, reject) => glob(globPattern, options, (err: Error, result: string[]) => err ? reject(err) : resolve(result)));
-}
 
 export async function readFileLinesUntil(file: string, predicate: (line: string) => 'accept' | 'stop'): Promise<string[]> {
     const result: string[] = [];

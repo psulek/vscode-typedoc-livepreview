@@ -1,0 +1,1 @@
+https://stackoverflow.com/questions/39003860/how-can-i-debug-installed-vscode-extensions

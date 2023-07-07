@@ -9,3 +9,14 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 preview.ts
+
+azure-pipelines.yml
+.azure-pipelines/
+ISSUE_TEMPLATE.md
+PULL_REQUEST_TEMPLATE.md
+.github/
+node_modules
+.eslintrc
+.prettierrc
+patches
+media/test.html

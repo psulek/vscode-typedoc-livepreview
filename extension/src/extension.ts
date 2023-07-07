@@ -19,7 +19,6 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     
-
     setTheme(vscode.window.activeColorTheme.kind);
 
     context.subscriptions.push(

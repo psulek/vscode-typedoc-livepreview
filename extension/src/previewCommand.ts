@@ -5,6 +5,7 @@ import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig } f
 import { asyncDebounce } from './utils';
 import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
 import { PostMessage } from './types';
+import { appendToLog } from './logger';
 
 let debouncedUpdatePreview: Function;
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -102,60 +103,56 @@ export class ShowPreviewCommand {
     }
 
     private async updatePreviewWindow(updateMode: PreviewUpdateMode, textEditor?: vscode.TextEditor): Promise<void> {
-        this.lastFile = this.currentFile;
-        const activeEditor = textEditor ?? vscode.window.activeTextEditor;
-        if (!activeEditor || !this.webviewPanel) { return; }
+        try {
+            this.lastFile = this.currentFile;
+            const activeEditor = textEditor ?? vscode.window.activeTextEditor;
+            if (!activeEditor || !this.webviewPanel) { return; }
 
-        let lineNumber = 1;
-        let originFilename = '';
-        let isUntitled = false;
+            let lineNumber = 1;
+            let originFilename = '';
+            let isUntitled = false;
 
-        let html = '';
-        if (this.isSupportedFileOpened(textEditor)) {
-            lineNumber = activeEditor.selection.active.line + 1;
-            originFilename = activeEditor.document.fileName;
-            isUntitled = activeEditor.document.isUntitled;
+            let html = '';
+            if (this.isSupportedFileOpened(textEditor)) {
+                lineNumber = activeEditor.selection.active.line + 1;
+                originFilename = activeEditor.document.fileName;
+                isUntitled = activeEditor.document.isUntitled;
 
-            this.webviewPanel.title = `TypeDoc Preview - ` + path.parse(originFilename).base;
+                this.webviewPanel.title = `TypeDoc Preview - ` + path.parse(originFilename).base;
 
-            if (isDifferentFile(originFilename)) {
-                this.resetWebviewPanel('loading');
+                if (isDifferentFile(originFilename)) {
+                    this.resetWebviewPanel('loading');
+                }
+
+                const tempfile = getUri('preview.ts').fsPath;
+                const editorText = activeEditor.document.getText();
+
+                await this.saveTempFile(tempfile, editorText);
+
+                const config = getConfig();
+                config.logging = false;
+                const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config);
+                html = this.md.render(markdown);
+            } else {
+                html = `<p><span style="color: red;">Unsupported file <b>${this.lastFile}</b></span>.<br/> Only typescript files are supported</p>`;
             }
 
-            const tempfile = getUri('preview.ts').fsPath;
-            const editorText = activeEditor.document.getText();
+            if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
 
-            // try {
-            //     const tsChecker = new TypeChecker(editorText, originFilename);
-            //     const node = tsChecker.getNode(activeEditor.selection.active);
-            //     console.log(node);
-            // } catch (error) {
-            //     console.error(error);
-            // }
+            const htmlContent = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
 
-            await this.saveTempFile(tempfile, editorText);
-
-            const config = getConfig();
-            config.logging = false;
-            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config);
-            html = this.md.render(markdown);
-        } else {
-            html = `<p><span style="color: red;">Unsupported file <b>${this.lastFile}</b></span>.<br/> Only typescript files are supported</p>`;
+            this.webviewPanel.webview.html = htmlContent.html;
+            this.lastMessage = {
+                command: 'update',
+                file: originFilename,
+                line: lineNumber,
+                isEmpty: htmlContent.isEmpty,
+                isUntitled: isUntitled
+            };
+            this.webviewPanel.webview.postMessage(this.lastMessage);
+        } catch (error) {
+            appendToLog('error', 'Failed to convert typedoc to markdown', error as Error);
         }
-
-        if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
-
-        const htmlContent = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
-
-        this.webviewPanel.webview.html = htmlContent.html;
-        this.lastMessage = {
-            command: 'update',
-            file: originFilename,
-            line: lineNumber,
-            isEmpty: htmlContent.isEmpty,
-            isUntitled: isUntitled
-        };
-        this.webviewPanel.webview.postMessage(this.lastMessage);
     }
 
     private resetWebviewPanel(type: 'loading' | 'empty'): void {
@@ -197,7 +194,7 @@ export class ShowPreviewCommand {
         const highlightCssUri = getMediaUri(webview, 'highlight-github.min.css', true);
         const globalCssUri = getMediaUri(webview, 'global.css', false);
 
-        const mainJsUri = getMediaUri(webview, 'main.js', false);
+        const pageJsUri = getMediaUri(webview, 'page.js', false);
         const highlightJsUri = getMediaUri(webview, 'highlight.min.js', false);
         const highlightTscJsUri = getMediaUri(webview, 'highlight-tsc.min.js', false);
 
@@ -235,7 +232,7 @@ export class ShowPreviewCommand {
                 <footer>
                     Powered by <a href="https://typedoc.org" class="typedoclogo" target="_blank">TypeDoc</a>
                 </footer>
-                <script nonce="${nonce}" src="${mainJsUri}"></script>
+                <script nonce="${nonce}" src="${pageJsUri}"></script>
 			</body>
 			</html>`;
 

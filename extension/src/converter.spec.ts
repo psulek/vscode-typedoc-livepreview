@@ -5,8 +5,9 @@ import * as fse from 'fs-extra';
 import * as chalk from 'chalk';
 import * as normalize from 'crlf-normalize';
 import { convertTypeDocToMarkdown } from './converter';
-import { arraySortBy, findFiles, promiseEachSeries, readFileLinesUntil } from './utils';
+import { arraySortBy, promiseEachSeries, readFileLinesUntil } from './utils';
 import { ExtensionConfig } from './types';
+import { findFiles } from './converter.spec.utils';
 
 const fileHeader = `// testcase:`;
 const log = console.log;
