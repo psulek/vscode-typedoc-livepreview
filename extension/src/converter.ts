@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as ts from 'typescript';
 import {
     Application, DeclarationReflection, PageEvent, Reflection, LogLevel, ReflectionKind,
-    ContainerReflection, Comment, SignatureReflection
+    ContainerReflection, Comment, SignatureReflection, ProjectReflection, DocumentationEntryPoint
 } from 'typedoc';
 import { arraySortBy, calcDuration } from './utils';
 import { ExtensionConfig } from './types';
@@ -57,11 +57,11 @@ export function resetCache(): void {
 }
 
 const tscOptions = {
-    //target: 7,
-    //module: 6,
-    
-    target: ts.ScriptTarget.ESNext,
-    module: ts.ModuleKind.ESNext,
+    // target: ts.ScriptTarget.ESNext,
+    // module: ts.ModuleKind.ESNext,
+
+    target: ts.ScriptTarget.ES5,
+    //module: ts.ModuleKind.,
 
     // noLib: true,
     // lib: ['es5'],
@@ -85,6 +85,8 @@ const tscOptions = {
 
 let convertCounter = 0;
 
+export const isDifferentFile = (originFilename: string) => lastConversion.originFilename !== originFilename;
+
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
     editorLine: number, mode: PreviewUpdateMode, config: ExtensionConfig): Promise<string> {
     let markdown = '';
@@ -93,7 +95,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
     const cnt = (++convertCounter).toString().padStart(4, '0');
     const log = (msg: string) => logging && console.log(`[typedoc.preview_${cnt}] ${msg}`);
 
-    const differentFile = lastConversion.originFilename !== originFilename;
+    const differentFile = isDifferentFile(originFilename);
     if (differentFile) {
         log(`resetting cache`);
         resetCache();
@@ -137,11 +139,12 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
         app.options.setCompilerOptions([sourceFile], tscOptions, undefined);
 
-        const project = app.convert()!;
+        const { project, entryPoints } = app.convert() as unknown as { project: ProjectReflection, entryPoints: DocumentationEntryPoint[] };
         const renderer = app.renderer;
         (renderer as any).prepareTheme();
 
-        const projectSourceFile = app.getEntryPoints()![0].sourceFile!;
+        //const projectSourceFile = app.getEntryPoints()![0].sourceFile!;
+        const projectSourceFile = entryPoints[0].sourceFile!;
         const projectSourceFileName = path.resolve(projectSourceFile.fileName);
         if (projectSourceFileName !== sourceFile) {
             throw new Error(`Source file '${sourceFile}' does not match project file '${projectSourceFileName}'!`);
@@ -214,6 +217,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                     const symbol = project.getSymbolFromReflection(model)!;
                     const modelKind = ReflectionKind.singularString(model.kind);
                     let modelSources = model.sources[0];
+                    //let modelSources = model.sources.find(x => x.fullFileName === normalizedSourceFile)!;
                     const modelSourcesFileName = modelSources.fullFileName;
 
                     if (modelSourcesFileName !== normalizedSourceFile) {
@@ -236,7 +240,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                         if (symbDeclaration) {
                             valueDeclaration = symbDeclaration;
                             const line = getSourceLine((symbDeclaration as any).name.pos);
-                            const ms = model.sources.find(x => x.line === line);
+                            const ms = model.sources.find(x => x.fullFileName === normalizedSourceFile && x.line === line);
                             if (ms) {
                                 modelSources = ms;
                             }
@@ -368,7 +372,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                             debugs.push(dbg);
                                             compiledReflections.push({ startline, endline, model, comment, signature: sig });
                                         } else {
-                                            console.debug('');
+                                            //console.debug('');
                                         }
 
                                         //compiledReflections.push({ startline, endline, model, comment, signature: sig });
@@ -380,7 +384,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                     debugs.push(dbg);
                                     compiledReflections.push({ startline, endline, model, comment, signature: undefined });
                                 } else {
-                                    console.debug('');
+                                    //console.debug('');
                                 }
 
                                 //compiledReflections.push({ startline, endline, model, comment, signature: undefined });
@@ -466,7 +470,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
             const renderer = lastConversion.app.renderer;
             const theme = renderer.theme!;
-            renderer.trigger(PageEvent.BEGIN, page);
+            //renderer.trigger(PageEvent.BEGIN, page);
 
             let mdString = '';
             if (comment || signature) {

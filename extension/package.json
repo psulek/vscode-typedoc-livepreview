@@ -10,8 +10,7 @@
         "Other"
     ],
     "activationEvents": [
-        "onLanguage:typescript",
-        "onWebviewPanel:"
+        "onLanguage:typescript"
     ],
     "main": "./out/extension.js",
     "contributes": {

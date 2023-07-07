@@ -16,7 +16,6 @@ export function init(ctx: vscode.ExtensionContext): void {
 }
 
 export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument): boolean {
-    //return activeTextEditor?.document.languageId === 'typescript';
     let uri: vscode.Uri;
     const isUri = uriOrDocument instanceof vscode.Uri;
     if ('uri' in uriOrDocument) {
@@ -25,7 +24,6 @@ export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument
         uri = uriOrDocument;
     }
 
-    //return uri ? supportedExtensions.includes(path.extname(uri.fsPath)) : false;
     let supported = uri ? supportedExtensions.includes(path.extname(uri.fsPath)) : false;
     if (!supported && !isUri) {
         supported = uriOrDocument.languageId === 'typescript';
@@ -50,7 +48,6 @@ export function getConfig(): ExtensionConfig {
 export async function updateConfig(newConfig: ExtensionConfig) {
     const emptySignatures = newConfig.hideEmptySignatures ? EmptySignaturesTypes.hide : EmptySignaturesTypes.show;
 
-    //const target = vscode.workspace.workspaceFolders ? vscode.ConfigurationTarget.WorkspaceFolder : vscode.ConfigurationTarget.Global;
     await vscode.workspace.getConfiguration().update(configKeys.emptySignatures, emptySignatures, vscode.ConfigurationTarget.Global);
 }
 

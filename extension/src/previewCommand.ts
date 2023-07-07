@@ -1,10 +1,9 @@
-import * as fs from 'node:fs/promises';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as MarkdownIt from 'markdown-it';
-import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig, isTypescriptFile } from './shared';
-import { asyncDebounce, delay } from './utils';
-import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastConvertedFile, resetCache } from './converter';
+import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig } from './shared';
+import { asyncDebounce } from './utils';
+import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
 import { PostMessage } from './types';
 
 let debouncedUpdatePreview: Function;
@@ -117,12 +116,28 @@ export class ShowPreviewCommand {
             originFilename = activeEditor.document.fileName;
             isUntitled = activeEditor.document.isUntitled;
 
-            this.webviewPanel.title = `TypeDoc: ` + path.parse(originFilename).base;
+            this.webviewPanel.title = `TypeDoc Preview - ` + path.parse(originFilename).base;
+
+            if (isDifferentFile(originFilename)) {
+                this.resetWebviewPanel('loading');
+            }
 
             const tempfile = getUri('preview.ts').fsPath;
-            await this.saveTempFile(tempfile, activeEditor.document.getText());
+            const editorText = activeEditor.document.getText();
 
-            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, getConfig());
+            // try {
+            //     const tsChecker = new TypeChecker(editorText, originFilename);
+            //     const node = tsChecker.getNode(activeEditor.selection.active);
+            //     console.log(node);
+            // } catch (error) {
+            //     console.error(error);
+            // }
+
+            await this.saveTempFile(tempfile, editorText);
+
+            const config = getConfig();
+            config.logging = false;
+            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config);
             html = this.md.render(markdown);
         } else {
             html = `<p><span style="color: red;">Unsupported file <b>${this.lastFile}</b></span>.<br/> Only typescript files are supported</p>`;
@@ -145,7 +160,14 @@ export class ShowPreviewCommand {
 
     private resetWebviewPanel(type: 'loading' | 'empty'): void {
         if (this.webviewPanel && this.webviewPanel.webview) {
-            this.webviewPanel.title = `TypeDoc: Live Preview`;
+            let title = `TypeDoc Preview`;
+            if (type === 'loading') {
+                const file = this.lastMessage?.file ?? '';
+                if (file !== '') {
+                    title = `TypeDoc Preview - ` + path.parse(file).base;
+                }
+            }
+            this.webviewPanel.title = title;
             this.webviewPanel.webview.html = type === 'loading' ? loadingHtml : this.wrapHTMLContentInDoc(this.webviewPanel.webview, emptyContentHint).html;
 
             if (type === 'empty') {
@@ -162,7 +184,10 @@ export class ShowPreviewCommand {
     }
 
     private async saveTempFile(file: string, text: string): Promise<void> {
-        await fs.writeFile(file, text, { encoding: 'utf-8' });
+        //await fs.writeFile(file, text, { encoding: 'utf-8' });
+
+        const fileUri = getUri('preview.ts');
+        await vscode.workspace.fs.writeFile(fileUri, Buffer.from(text, 'utf8'));
     }
 
     private wrapHTMLContentInDoc(webview: vscode.Webview, html: string): { html: string, isEmpty: boolean } {

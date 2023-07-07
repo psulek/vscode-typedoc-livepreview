@@ -10,6 +10,19 @@ index fc8c189..575b542 100644
 +Object.defineProperty(exports, "BasePath", { enumerable: true, get: function () { return basepath_1.BasePath; } });
  const typescript_1 = __importDefault(require("typescript"));
  exports.TypeScript = typescript_1.default;
+diff --git a/node_modules/typedoc/dist/lib/application.js b/node_modules/typedoc/dist/lib/application.js
+index 98f4da0..385044d 100644
+--- a/node_modules/typedoc/dist/lib/application.js
++++ b/node_modules/typedoc/dist/lib/application.js
+@@ -197,7 +197,7 @@ let Application = exports.Application = Application_1 = class Application extend
+         this.logger.verbose(`Finished getting entry points in ${Date.now() - start}ms`);
+         const project = this.converter.convert(entryPoints);
+         this.logger.verbose(`Finished conversion in ${Date.now() - startConversion}ms`);
+-        return project;
++        return { project, entryPoints };
+     }
+     convertAndWatch(success) {
+         this.options.freeze();
 diff --git a/node_modules/typedoc/dist/lib/converter/converter.js b/node_modules/typedoc/dist/lib/converter/converter.js
 index befd6eb..8a8e2ef 100644
 --- a/node_modules/typedoc/dist/lib/converter/converter.js
@@ -78,6 +91,152 @@ index befd6eb..8a8e2ef 100644
      // Put symbols named "default" last, #1795
      result.sort((a, b) => {
          if (a.name === "default") {
+diff --git a/node_modules/typedoc/dist/lib/converter/plugins/CategoryPlugin.js b/node_modules/typedoc/dist/lib/converter/plugins/CategoryPlugin.js
+index a49422d..9793c9f 100644
+--- a/node_modules/typedoc/dist/lib/converter/plugins/CategoryPlugin.js
++++ b/node_modules/typedoc/dist/lib/converter/plugins/CategoryPlugin.js
+@@ -27,11 +27,12 @@ let CategoryPlugin = exports.CategoryPlugin = CategoryPlugin_1 = class CategoryP
+      * Create a new CategoryPlugin instance.
+      */
+     initialize() {
+-        this.listenTo(this.owner, {
+-            [converter_1.Converter.EVENT_BEGIN]: this.onBegin,
+-            [converter_1.Converter.EVENT_RESOLVE]: this.onResolve,
+-            [converter_1.Converter.EVENT_RESOLVE_END]: this.onEndResolve,
+-        }, undefined, -200);
++        // we dont need this info in preview!
++        // this.listenTo(this.owner, {
++        //     [converter_1.Converter.EVENT_BEGIN]: this.onBegin,
++        //     [converter_1.Converter.EVENT_RESOLVE]: this.onResolve,
++        //     [converter_1.Converter.EVENT_RESOLVE_END]: this.onEndResolve,
++        // }, undefined, -200);
+     }
+     /**
+      * Triggered when the converter begins converting a project.
+diff --git a/node_modules/typedoc/dist/lib/converter/plugins/GroupPlugin.js b/node_modules/typedoc/dist/lib/converter/plugins/GroupPlugin.js
+index 0ab5427..22bfebe 100644
+--- a/node_modules/typedoc/dist/lib/converter/plugins/GroupPlugin.js
++++ b/node_modules/typedoc/dist/lib/converter/plugins/GroupPlugin.js
+@@ -29,14 +29,16 @@ let GroupPlugin = exports.GroupPlugin = GroupPlugin_1 = class GroupPlugin extend
+      * Create a new GroupPlugin instance.
+      */
+     initialize() {
+-        this.listenTo(this.owner, {
+-            [converter_1.Converter.EVENT_RESOLVE_BEGIN]: () => {
+-                this.sortFunction = (0, sort_1.getSortFunction)(this.application.options);
+-                GroupPlugin_1.WEIGHTS = this.groupOrder;
+-            },
+-            [converter_1.Converter.EVENT_RESOLVE]: this.onResolve,
+-            [converter_1.Converter.EVENT_RESOLVE_END]: this.onEndResolve,
+-        });
++        // we dont need this info in preview!
++
++        // this.listenTo(this.owner, {
++        //     [converter_1.Converter.EVENT_RESOLVE_BEGIN]: () => {
++        //         this.sortFunction = (0, sort_1.getSortFunction)(this.application.options);
++        //         GroupPlugin_1.WEIGHTS = this.groupOrder;
++        //     },
++        //     [converter_1.Converter.EVENT_RESOLVE]: this.onResolve,
++        //     [converter_1.Converter.EVENT_RESOLVE_END]: this.onEndResolve,
++        // });
+     }
+     /**
+      * Triggered when the converter resolves a reflection.
+diff --git a/node_modules/typedoc/dist/lib/converter/plugins/PackagePlugin.js b/node_modules/typedoc/dist/lib/converter/plugins/PackagePlugin.js
+index aa947d2..d6769b3 100644
+--- a/node_modules/typedoc/dist/lib/converter/plugins/PackagePlugin.js
++++ b/node_modules/typedoc/dist/lib/converter/plugins/PackagePlugin.js
+@@ -45,18 +45,20 @@ const path_1 = require("path");
+  */
+ let PackagePlugin = exports.PackagePlugin = class PackagePlugin extends components_1.ConverterComponent {
+     initialize() {
+-        this.listenTo(this.owner, {
+-            [converter_1.Converter.EVENT_BEGIN]: this.onBegin,
+-            [converter_1.Converter.EVENT_RESOLVE_BEGIN]: this.onBeginResolve,
+-            [converter_1.Converter.EVENT_END]: () => {
+-                delete this.readmeFile;
+-                delete this.readmeContents;
+-                delete this.packageJson;
+-            },
+-        });
+-        this.listenTo(this.application, {
+-            [application_events_1.ApplicationEvents.REVIVE]: this.onRevive,
+-        });
++        // we dont need this info in preview!
++
++        // this.listenTo(this.owner, {
++        //     [converter_1.Converter.EVENT_BEGIN]: this.onBegin,
++        //     [converter_1.Converter.EVENT_RESOLVE_BEGIN]: this.onBeginResolve,
++        //     [converter_1.Converter.EVENT_END]: () => {
++        //         delete this.readmeFile;
++        //         delete this.readmeContents;
++        //         delete this.packageJson;
++        //     },
++        // });
++        // this.listenTo(this.application, {
++        //     [application_events_1.ApplicationEvents.REVIVE]: this.onRevive,
++        // });
+     }
+     onRevive(project) {
+         this.onBegin();
+diff --git a/node_modules/typedoc/dist/lib/converter/plugins/SourcePlugin.js b/node_modules/typedoc/dist/lib/converter/plugins/SourcePlugin.js
+index c21517c..a2c25b6 100644
+--- a/node_modules/typedoc/dist/lib/converter/plugins/SourcePlugin.js
++++ b/node_modules/typedoc/dist/lib/converter/plugins/SourcePlugin.js
+@@ -124,28 +124,31 @@ let SourcePlugin = exports.SourcePlugin = class SourcePlugin extends components_
+      * @returns The found repository info or undefined.
+      */
+     getRepository(fileName) {
+-        // Check for known non-repositories
+-        const dirName = (0, path_1.dirname)(fileName);
+-        const segments = dirName.split("/");
+-        for (let i = segments.length; i > 0; i--) {
+-            if (this.ignoredPaths.has(segments.slice(0, i).join("/"))) {
+-                return;
+-            }
+-        }
+-        // Check for known repositories
+-        for (const path of Object.keys(this.repositories)) {
+-            if (fileName.toLowerCase().startsWith(path)) {
+-                return this.repositories[path];
+-            }
+-        }
+-        // Try to create a new repository
+-        const repository = repository_1.Repository.tryCreateRepository(dirName, this.sourceLinkTemplate, this.gitRevision, this.gitRemote, this.application.logger);
+-        if (repository) {
+-            this.repositories[repository.path.toLowerCase()] = repository;
+-            return repository;
+-        }
+-        // No repository found, add path to ignored paths
+-        this.ignoredPaths.add(dirName);
++        // we dont need this info in preview!
++        return undefined; 
++
++        // // Check for known non-repositories
++        // const dirName = (0, path_1.dirname)(fileName);
++        // const segments = dirName.split("/");
++        // for (let i = segments.length; i > 0; i--) {
++        //     if (this.ignoredPaths.has(segments.slice(0, i).join("/"))) {
++        //         return;
++        //     }
++        // }
++        // // Check for known repositories
++        // for (const path of Object.keys(this.repositories)) {
++        //     if (fileName.toLowerCase().startsWith(path)) {
++        //         return this.repositories[path];
++        //     }
++        // }
++        // // Try to create a new repository
++        // const repository = repository_1.Repository.tryCreateRepository(dirName, this.sourceLinkTemplate, this.gitRevision, this.gitRemote, this.application.logger);
++        // if (repository) {
++        //     this.repositories[repository.path.toLowerCase()] = repository;
++        //     return repository;
++        // }
++        // // No repository found, add path to ignored paths
++        // this.ignoredPaths.add(dirName);
+     }
+ };
+ __decorate([
 diff --git a/node_modules/typedoc/dist/lib/models/reflections/project.js b/node_modules/typedoc/dist/lib/models/reflections/project.js
 index 19deae5..b7446ec 100644
 --- a/node_modules/typedoc/dist/lib/models/reflections/project.js

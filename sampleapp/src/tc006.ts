@@ -16,8 +16,9 @@ export type ILogger = {
      * @param level - log level
      * @param message - log message
      * @param error - log error (optional)
+     * @param map - this a map
      */
-    log: (level: string, message: string, error?: Error) => void;
+    log: (level: string, message: string, error?: Error, map?: Map<string, number>) => void;
 
     logDebug: () => void;
 };
