@@ -7,7 +7,7 @@
             "type": "npm",
             "script": "watch",
             "label": "watch",
-            "problemMatcher": "$tsc-watch",
+            "problemMatcher": "$esbuild-watch",
             "isBackground": true,
             "presentation": {
                 "reveal": "silent"
@@ -16,13 +16,6 @@
                 "kind": "build",
                 "isDefault": true
             }
-        },
-        {
-            "type": "npm",
-            "script": "test3",
-            "problemMatcher": [],
-            "label": "npm: test3",
-            "detail": "node ./out/typedoc.spec.js"
         }
     ]
 }

@@ -12,9 +12,11 @@
     "activationEvents": [
         "onLanguage:typescript"
     ],
-    "main": "./out/extension.js",
+    "__main": "./out/extension.js",
+    "main": "./out/main.js",
     "contributes": {
-        "commands": [{
+        "commands": [
+            {
                 "category": "TypeDoc Live Preview",
                 "command": "typedocPreview.showPreview",
                 "title": "Open TypeDoc Preview"
@@ -39,13 +41,16 @@
                 }
             }
         ],
-        "keybindings": [{
-            "command": "typedocPreview.showPreviewToSide",
-            "key": "ctrl+alt+p",
-            "when": "resourceLangId == typescript"
-        }],
+        "keybindings": [
+            {
+                "command": "typedocPreview.showPreviewToSide",
+                "key": "ctrl+alt+p",
+                "when": "resourceLangId == typescript"
+            }
+        ],
         "menus": {
-            "commandPalette": [{
+            "commandPalette": [
+                {
                     "command": "typedocPreview.showPreview",
                     "when": "false",
                     "group": "navigation"
@@ -55,43 +60,53 @@
                     "group": "navigation"
                 }
             ],
-            "editor/title": [{
-                "command": "typedocPreview.showPreviewToSide",
-                "group": "navigation",
-                "when": "editorLangId == typescript"
-            }]
+            "editor/title": [
+                {
+                    "command": "typedocPreview.showPreviewToSide",
+                    "group": "navigation",
+                    "when": "editorLangId == typescript"
+                }
+            ]
         },
-        "configuration": [{
-            "id": "common",
-            "title": "TypeDoc Live Preview",
-            "properties": {
-                "TypeDocLivePreview.emptySignatures": {
-                    "type": "string",
-                    "enum": [
-                        "show",
-                        "hide"
-                    ],
-                    "markdownEnumDescriptions": [
-                        "`show` - shows signatures even when they are empty",
-                        "`hide` - do not show empty signatures"
-                    ],
-                    "default": "show",
-                    "description": "Show empty signatures",
-                    "scope": "window"
+        "configuration": [
+            {
+                "id": "common",
+                "title": "TypeDoc Live Preview",
+                "properties": {
+                    "TypeDocLivePreview.emptySignatures": {
+                        "type": "string",
+                        "enum": [
+                            "show",
+                            "hide"
+                        ],
+                        "markdownEnumDescriptions": [
+                            "`show` - shows signatures even when they are empty",
+                            "`hide` - do not show empty signatures"
+                        ],
+                        "default": "show",
+                        "description": "Show empty signatures",
+                        "scope": "window"
+                    }
                 }
             }
-        }]
+        ]
     },
     "scripts": {
         "postinstall": "patch-package",
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
+        "__vscode:prepublish": "npm run compile",
+        "__compile": "tsc -p ./",
+        "__watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
         "test": "node ./out/test/runTest.js",
         "test-cases": "node ./out/converter.spec.js",
-        "create-patch": "npx patch-package typedoc"
+        "create-patch": "npx patch-package typedoc",
+
+        "vscode:prepublish": "npm run esbuild-base -- --minify",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --external:vscode-* --external:typescript --format=cjs --platform=node",
+        "__esbuild-base": "node build.js",
+        "compile": "npm run esbuild-base -- --sourcemap",
+        "watch": "npm run esbuild-base -- --sourcemap --watch"
     },
     "devDependencies": {
         "@types/fs-extra": "^11.0.1",
@@ -106,6 +121,7 @@
         "@typescript-eslint/parser": "^5.59.8",
         "@vscode/test-electron": "^2.3.2",
         "chalk": "^4.0.0",
+        "esbuild": "^0.18.11",
         "eslint": "^8.41.0",
         "glob": "^8.1.0",
         "mocha": "^10.2.0",
@@ -113,14 +129,14 @@
         "typescript": "^5.1.3"
     },
     "dependencies": {
+        "crlf-normalize": "1.0.19",
+        "date-fns": "2.29.3",
         "fs-extra": "^6.0.0",
         "glob-all": "3.3.1",
         "lodash.debounce": "^4.0.8",
         "lodash.throttle": "^4.1.1",
         "markdown-it": "13.0.1",
         "typedoc": ">=0.24.8",
-        "typedoc-plugin-markdown": "^4.0.0-next.16",
-        "crlf-normalize": "1.0.19",
-        "date-fns": "2.29.3"
+        "typedoc-plugin-markdown": "^4.0.0-next.16"
     }
 }
