@@ -9,7 +9,7 @@ import { ExtensionConfig } from './types';
 import { appendToLog } from './logger';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const { BasePath, Enum } = require('typedoc');
+const { BasePath } = require('typedoc');
 
 export type PreviewUpdateMode = 'content' | 'cursor';
 

@@ -19,6 +19,9 @@ const loadingHtml = `<div style="width: 16px; height: 16px;">
 <svg fill="#6495ed" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><style>@keyframes spinner_MGfb{93.75%{opacity:.2}}.spinner_S1WN{animation:spinner_MGfb .8s linear infinite;animation-delay:-.8s}</style><circle cx="4" cy="12" r="3" class="spinner_S1WN"/><circle cx="12" cy="12" r="3" class="spinner_S1WN" style="animation-delay:-.65s"/><circle cx="20" cy="12" r="3" class="spinner_S1WN" style="animation-delay:-.5s"/></svg>
 </div>`;
 
+/**
+ * show preview command
+ */
 export class ShowPreviewCommand {
     private webviewPanel?: vscode.WebviewPanel;
     private md!: MarkdownIt;
