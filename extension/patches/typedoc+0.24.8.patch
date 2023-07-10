@@ -11,10 +11,29 @@ index fc8c189..575b542 100644
  const typescript_1 = __importDefault(require("typescript"));
  exports.TypeScript = typescript_1.default;
 diff --git a/node_modules/typedoc/dist/lib/application.js b/node_modules/typedoc/dist/lib/application.js
-index 98f4da0..385044d 100644
+index 98f4da0..68f9578 100644
 --- a/node_modules/typedoc/dist/lib/application.js
 +++ b/node_modules/typedoc/dist/lib/application.js
-@@ -197,7 +197,7 @@ let Application = exports.Application = Application_1 = class Application extend
+@@ -99,7 +99,7 @@ let Application = exports.Application = Application_1 = class Application extend
+         this.setOptions(options, /* reportErrors */ false);
+         this.options.read(new index_2.Logger());
+         this.logger.level = this.options.getValue("logLevel");
+-        await (0, index_2.loadPlugins)(this, this.options.getValue("plugin"));
++        await (0, index_2.loadPlugins)(this, this.options.getValue("plugin"), options.pluginInstanes);
+         this.bootstrap(options);
+     }
+     /**
+@@ -142,7 +142,8 @@ let Application = exports.Application = Application_1 = class Application extend
+      * Return the path to the TypeScript compiler.
+      */
+     getTypeScriptPath() {
+-        return (0, paths_1.nicePath)(Path.dirname(require.resolve("typescript")));
++        return '';
++        //return (0, paths_1.nicePath)(Path.dirname(require.resolve("typescript")));
+     }
+     getTypeScriptVersion() {
+         return typescript_1.default.version;
+@@ -197,7 +198,7 @@ let Application = exports.Application = Application_1 = class Application extend
          this.logger.verbose(`Finished getting entry points in ${Date.now() - start}ms`);
          const project = this.converter.convert(entryPoints);
          this.logger.verbose(`Finished conversion in ${Date.now() - startConversion}ms`);
@@ -271,3 +290,31 @@ index 727254d..6080d84 100644
  /**
   * List of known log levels. Used to specify the urgency of a log message.
   */
+diff --git a/node_modules/typedoc/dist/lib/utils/plugins.js b/node_modules/typedoc/dist/lib/utils/plugins.js
+index 5f3a075..82e55ca 100644
+--- a/node_modules/typedoc/dist/lib/utils/plugins.js
++++ b/node_modules/typedoc/dist/lib/utils/plugins.js
+@@ -4,14 +4,20 @@ exports.loadPlugins = void 0;
+ const path_1 = require("path");
+ const url_1 = require("url");
+ const paths_1 = require("./paths");
+-async function loadPlugins(app, plugins) {
++async function loadPlugins(app, plugins, pluginInstanes) {
+     for (const plugin of plugins) {
+         const pluginDisplay = getPluginDisplayName(plugin);
+         try {
+             // eslint-disable-next-line @typescript-eslint/no-var-requires
+-            let instance;
++            let instance = undefined;
+             try {
+-                instance = require(plugin);
++                if (pluginInstanes) {
++                    instance = pluginInstanes[plugin];
++                }
++
++                if (instance === undefined) {
++                    instance = require(plugin);
++                }
+             }
+             catch (error) {
+                 if (error.code === "ERR_REQUIRE_ESM") {
