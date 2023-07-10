@@ -33,7 +33,7 @@ export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument
 }
 
 export const configKeys = {
-    emptySignatures: 'TypeDocLivePreview.emptySignatures'
+    emptySignatures: 'typedoclivepreview.emptySignatures'
 };
 
 

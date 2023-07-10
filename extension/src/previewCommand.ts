@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import MarkdownIt from 'markdown-it';
-import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig } from './shared';
+import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig, isTypescriptFile } from './shared';
 import { asyncDebounce } from './utils';
 import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
 import { PostMessage } from './types';
@@ -83,7 +83,8 @@ export class ShowPreviewCommand {
         webviewPanel.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'reload':
-                    this.reload(message.file, message.line, message.isUntitled);
+                    //this.reload(message.file, message.isUntitled, message.line);
+                    this.reload({ ...message });
                     return;
             }
         });
@@ -91,10 +92,26 @@ export class ShowPreviewCommand {
         this.webviewPanel = webviewPanel;
     }
 
-    private async reload(file: string, line: number, isUntitled: boolean) {
+    public async reload(options?: { file: string, isUntitled: boolean }) {
         this.resetWebviewPanel('loading');
-        const editor = vscode.window.visibleTextEditors.find(x => x.document.fileName === file && x.document.isUntitled === isUntitled);
-        this.updatePreviewWindow('content', editor);
+        let file = options?.file;
+        let isUntitled = options?.isUntitled;
+
+        if (options === undefined) {
+            if (this.lastMessage) {
+                file = this.lastMessage.file;
+                isUntitled = this.lastMessage.isUntitled;
+            } else {
+                if (vscode.window.activeTextEditor && isTypescriptFile(vscode.window.activeTextEditor?.document)) {
+                    this.show({viewColumn: vscode.ViewColumn.Beside, textEditor: vscode.window.activeTextEditor});
+                }
+            }
+        }
+
+        if (file && isUntitled !== undefined) {
+            const editor = vscode.window.visibleTextEditors.find(x => x.document.fileName === file && x.document.isUntitled === isUntitled);
+            this.updatePreviewWindow('content', editor);
+        }
     }
 
     private async updatePreview(): Promise<void> {
@@ -273,7 +290,8 @@ export class ShowPreviewCommand {
 
                 setTheme(theme.kind);
                 if (this.lastMessage) {
-                    this.reload(this.lastMessage.file, this.lastMessage.line, this.lastMessage.isUntitled);
+                    //this.reload(this.lastMessage.file, this.lastMessage.isUntitled, this.lastMessage.line);
+                    this.reload({ ...this.lastMessage });
                 }
                 //this.updatePreviewCursorChanged();
             }),

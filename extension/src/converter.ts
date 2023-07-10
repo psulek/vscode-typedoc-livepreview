@@ -10,6 +10,7 @@ import { appendToLog } from './logger';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const { BasePath } = require('typedoc');
+const pluginMarkdown = require('typedoc-plugin-markdown');
 
 export type PreviewUpdateMode = 'content' | 'cursor';
 
@@ -123,6 +124,8 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
             const opts = {
                 entryPoints: [sourceFile],
                 plugin: ['typedoc-plugin-markdown'],
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                pluginInstanes: {'typedoc-plugin-markdown': pluginMarkdown},
                 skipErrorChecking: true,
                 hideGenerator: true,
                 readme: 'none',

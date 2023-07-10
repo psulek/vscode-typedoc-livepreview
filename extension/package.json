@@ -38,8 +38,13 @@
             },
             {
                 "category": "TypeDoc Live Preview",
+                "command": "typedocPreview.reloadPreview",
+                "title": "Reload preview"
+            },
+            {
+                "category": "TypeDoc Live Preview",
                 "command": "typedocPreview.showPreviewToSide",
-                "title": "Open TypeDoc Preview to the Side",
+                "title": "Open Preview to the Side",
                 "icon": {
                     "light": "media/typedoclogo.png",
                     "dark": "media/typedoclogo.png"
@@ -78,7 +83,7 @@
                 "id": "common",
                 "title": "TypeDoc Live Preview",
                 "properties": {
-                    "TypeDocLivePreview.emptySignatures": {
+                    "typedoclivepreview.emptySignatures": {
                         "type": "string",
                         "enum": [
                             "show",
@@ -104,8 +109,8 @@
         "test": "node ./out/test/runTest.js",
         "test-cases": "node ./out/converter.spec.js",
         "create-patch": "npx patch-package typedoc",
-        "__vscode:prepublish": "npm run esbuild-base -- --minify",
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "npm run esbuild-base -- --minify",
+        "__vscode:prepublish": "npm run compile",
         "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
         "compile": "npm run esbuild-base -- --sourcemap",
         "watch": "npm run esbuild-base -- --sourcemap --watch",

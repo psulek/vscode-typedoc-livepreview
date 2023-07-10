@@ -1,11 +1,25 @@
 # TypeDoc Live Preview for Visual Studio Code
 
+![demo](./demo/demo1.gif)
+
+
 A `vscode` extension to show live preview of typescript documentation using `tsdoc` or [typedoc](https://typedoc.org/) markup within your typescript files.
 
 ## Features
 
-\!\[feature X\]\(images/feature-x.png\)
+- Live preview of typescript documentation (tsdoc or typedoc)
+- Light & dark theme support (autodetect)
+![demo](./demo/demo2.gif)
+- Show or hide empty methods/fuctions signatures
+![demo](./demo/demo3.gif)
 
+
+## Commands
+
+| Command                               | Keybinding   |
+| ------------------------------------- | ------------ |
+| TypeDoc Live Preview: Open Preview to the Side | `Ctrl + Alt + P` |
+| TypeDoc Live Preview: Reload Preview           | none         |
 
 ## Install
 
@@ -15,15 +29,14 @@ A `vscode` extension to show live preview of typescript documentation using `tsd
 1. Click **Reload**, if required
 
 
-## Extension Settings
+## Settings
 
 This extension contributes the following settings:
 
-* `TypeDocLivePreview.emptySignatures`: Enable/disable this extension.
+| Property                            | Description                                      | Default | Values |
+| ----------------------------------- | ------------------------------------------------ | ------- | ------ |
+| typedoclivepreview.emptySignatures  | Show or hide empty methods/fuctions signatures   | `show`  | `show`,`hide` |
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
 
 ### 1.0.0
 

@@ -41,6 +41,10 @@ export function activate(context: vscode.ExtensionContext) {
             'typedocPreview.showPreviewToSide',
             textEditor => showPreview(vscode.ViewColumn.Beside, textEditor)),
 
+        vscode.commands.registerTextEditorCommand(
+            'typedocPreview.reloadPreview',
+            _ => previewPanel.reload()),
+
         vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration(configKeys.emptySignatures)) {
                 //previewPanel.refresh();
