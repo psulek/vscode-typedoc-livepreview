@@ -66,6 +66,7 @@ export async function readFileLinesUntil(file: string, predicate: (line: string)
         }
     });
 
+    // @ts-ignore
     await events.once(rl, 'close');
     return result;
 }

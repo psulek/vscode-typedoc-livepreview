@@ -26,8 +26,8 @@ async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
-        // const filterTests = 'tc009.d.ts';
-        const filterTests = '';
+        const filterTests = 'tc001.ts';
+        // const filterTests = '';
 
         const colorNumber = chalk.blueBright;
         const colorFile = chalk.cyan;

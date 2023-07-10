@@ -17,7 +17,6 @@ export function activate(context: vscode.ExtensionContext) {
             textEditor: textEditor
         });
     };
-
     
     setTheme(vscode.window.activeColorTheme.kind);
 

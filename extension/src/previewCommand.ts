@@ -83,7 +83,6 @@ export class ShowPreviewCommand {
         webviewPanel.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'reload':
-                    //this.reload(message.file, message.isUntitled, message.line);
                     this.reload({ ...message });
                     return;
             }
@@ -103,14 +102,16 @@ export class ShowPreviewCommand {
                 isUntitled = this.lastMessage.isUntitled;
             } else {
                 if (vscode.window.activeTextEditor && isTypescriptFile(vscode.window.activeTextEditor?.document)) {
-                    this.show({viewColumn: vscode.ViewColumn.Beside, textEditor: vscode.window.activeTextEditor});
+                    this.show({ viewColumn: vscode.ViewColumn.Beside, textEditor: vscode.window.activeTextEditor });
                 }
             }
         }
 
         if (file && isUntitled !== undefined) {
             const editor = vscode.window.visibleTextEditors.find(x => x.document.fileName === file && x.document.isUntitled === isUntitled);
-            this.updatePreviewWindow('content', editor);
+            if (editor) {
+                this.updatePreviewWindow('content', editor);
+            }
         }
     }
 
@@ -144,10 +145,11 @@ export class ShowPreviewCommand {
                     this.resetWebviewPanel('loading');
                 }
 
-                const tempfile = getUri('preview.ts').fsPath;
+                const tempFileUri = getUri('preview.ts');
+                const tempfile = tempFileUri.fsPath;
                 const editorText = activeEditor.document.getText();
 
-                await this.saveTempFile(tempfile, editorText);
+                await this.saveTempFile(tempFileUri, editorText);
 
                 const config = getConfig();
                 config.logging = false;
@@ -200,11 +202,8 @@ export class ShowPreviewCommand {
         }
     }
 
-    private async saveTempFile(file: string, text: string): Promise<void> {
-        //await fs.writeFile(file, text, { encoding: 'utf-8' });
-
-        const fileUri = getUri('preview.ts');
-        await vscode.workspace.fs.writeFile(fileUri, Buffer.from(text, 'utf8'));
+    private async saveTempFile(file: vscode.Uri, text: string): Promise<void> {
+        await vscode.workspace.fs.writeFile(file, Buffer.from(text, 'utf8'));
     }
 
     private wrapHTMLContentInDoc(webview: vscode.Webview, html: string): { html: string, isEmpty: boolean } {
@@ -273,12 +272,6 @@ export class ShowPreviewCommand {
         return activeTextEditor?.document.languageId === 'typescript';
     }
 
-    private get activeEditorFileName(): string {
-        //const editors = vscode.window.visibleTextEditors.map(x => x.document.fileName).join(',');
-        //return (vscode.window.activeTextEditor?.document.fileName ?? '') + ` ${Date.now()} [${editors}]`;
-        return vscode.window.activeTextEditor?.document.fileName ?? '';
-    }
-
     private registerEvents() {
         debouncedUpdatePreview = asyncDebounce(this.updatePreview.bind(this), 500, { leading: false, trailing: true, maxWait: 1000 }) as unknown as Function;
         // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -286,25 +279,17 @@ export class ShowPreviewCommand {
 
         context.subscriptions.push(
             vscode.window.onDidChangeActiveColorTheme(theme => {
-                //console.warn(`[onDidChangeActiveColorTheme] file: ${this.activeEditorFileName}`);
-
                 setTheme(theme.kind);
                 if (this.lastMessage) {
-                    //this.reload(this.lastMessage.file, this.lastMessage.isUntitled, this.lastMessage.line);
                     this.reload({ ...this.lastMessage });
                 }
-                //this.updatePreviewCursorChanged();
             }),
 
             vscode.workspace.onDidChangeTextDocument(() => {
-                //console.warn(`[onDidChangeTextDocument] file: ${this.activeEditorFileName}`);
-
                 // @ts-ignore
                 debouncedUpdatePreview();
             }),
             vscode.window.onDidChangeActiveTextEditor(e => {
-                //console.warn(`[onDidChangeActiveTextEditor] file: ${this.activeEditorFileName}`);
-
                 if (e && e.document) {
                     this.currentFile = e.document.fileName;
                 }
@@ -318,14 +303,10 @@ export class ShowPreviewCommand {
             }),
 
             vscode.window.onDidChangeTextEditorSelection(() => {
-                //console.warn(`[onDidChangeTextEditorSelection] file: ${this.activeEditorFileName}`);
-
                 deb_updatePreviewCursorChanged();
             }),
 
             vscode.window.onDidChangeVisibleTextEditors(() => {
-                //console.warn(`[onDidChangeVisibleTextEditors] file: ${this.activeEditorFileName}`);
-
                 const lastConvertedFile = getLastConvertedFile();
                 if (!vscode.window.visibleTextEditors.some(x => x.document.fileName === lastConvertedFile)) {
                     this.resetWebviewPanel('empty');

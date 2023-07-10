@@ -102,7 +102,7 @@
         ]
     },
     "scripts": {
-        "postinstall": "patch-package && node node_modules/vscode/bin/install",
+        "postinstall": "patch-package",
         "_install-vsix": "code --install-extension typedoc-live-preview-1.0.0.vsix",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",

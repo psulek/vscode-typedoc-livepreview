@@ -376,11 +376,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                             if (!debugs.includes(dbg)) {
                                                 debugs.push(dbg);
                                                 compiledReflections.push({ startline, endline, model, comment, signature: sig });
-                                            } else {
-                                                //console.debug('');
                                             }
-
-                                            //compiledReflections.push({ startline, endline, model, comment, signature: sig });
                                         }
                                     });
                                 } else {
@@ -388,11 +384,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                     if (!debugs.includes(dbg)) {
                                         debugs.push(dbg);
                                         compiledReflections.push({ startline, endline, model, comment, signature: undefined });
-                                    } else {
-                                        //console.debug('');
                                     }
-
-                                    //compiledReflections.push({ startline, endline, model, comment, signature: undefined });
                                 }
                             }
                         }
@@ -451,7 +443,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
     if (!useCache) {
         let lineReflection: DeclarationReflectionInfo | undefined = undefined;
-        //if (editorLine > 1) {
         if (editorLine > 0) {
             for (let i = 0; i < lastConversion.reflections.length; i++) {
                 const item = lastConversion.reflections[i];
@@ -479,7 +470,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
                 const renderer = lastConversion.app.renderer;
                 const theme = renderer.theme!;
-                //renderer.trigger(PageEvent.BEGIN, page);
 
                 let mdString = '';
                 if (comment || signature) {
@@ -545,17 +535,6 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
         };
 
         let foundRef = false;
-        // arraySortBy(compiledReflections, x => x.startline, 'asc').forEach(reflection => {
-        //     if (!foundRef) {
-        //         if (reflection === lineReflection) {
-        //             foundRef = true;
-        //             const md = renderReflection(reflection);
-        //             markdown = md;
-
-        //         }
-        //     }
-        // });
-
         for (let i = 0; i < compiledReflections.length; i++) {
             const reflection = compiledReflections[i];
             if (reflection === lineReflection) {
