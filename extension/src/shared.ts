@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { EmptySignaturesTypes, ExtensionConfig } from './types';
+import { EmptySignaturesTypes, ExtensionConfig, ILogger } from './types';
 
 export type VsCodeTheme = 'light' | 'dark';
 
@@ -10,6 +10,18 @@ export let context: vscode.ExtensionContext;
 let activeTheme: VsCodeTheme = 'light';
 
 const supportedExtensions = ['.ts', '.mts', '.tsx', '.mtsx'];
+
+export class VsCodeLogger implements ILogger {
+    panel: vscode.OutputChannel | undefined;
+
+    log(level: 'info' | 'warn' | 'error', msg: string, err?: Error | undefined): void {
+        if (!this.panel) {
+            this.panel = vscode.window.createOutputChannel('TypeDocLivePreview');
+        }
+
+        this.panel.appendLine(`[${level}] ${msg}` + (err ? `[${err.name}] ${err.message} ${err.stack}` : ''));
+    }
+}
 
 export function init(ctx: vscode.ExtensionContext): void {
     context = ctx;

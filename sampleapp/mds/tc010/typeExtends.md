@@ -7,5 +7,5 @@ Context provided to a class decorator.
 
 | Parameter | Description |
 | :------ | :------ |
-| `T` *extends* `number` | The type of the decorated class associated with this context<br />is super awesome. |
+| `T` *extends* `number` | The type of the decorated class associated with this context is super awesome. |
 | `U` | this is U ;-) |

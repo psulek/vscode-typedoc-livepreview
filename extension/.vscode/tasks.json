@@ -16,6 +16,20 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "type": "npm",
+            "script": "watch-tests",
+            "label": "watch-tests",
+            "problemMatcher": "$esbuild-watch",
+            "isBackground": true,
+            "presentation": {
+                "reveal": "silent"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
         }
     ]
 }

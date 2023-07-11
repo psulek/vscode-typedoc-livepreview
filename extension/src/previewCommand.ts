@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import MarkdownIt from 'markdown-it';
-import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig, isTypescriptFile } from './shared';
+import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig, isTypescriptFile, VsCodeLogger } from './shared';
 import { asyncDebounce } from './utils';
 import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
 import { PostMessage } from './types';
-import { appendToLog } from './logger';
 
 let debouncedUpdatePreview: Function;
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -29,6 +28,8 @@ export class ShowPreviewCommand {
     private lastFile = '';
     private currentFile = '';
     private lastMessage?: PostMessage;
+    private logger = new VsCodeLogger();
+
 
     constructor() {
         this.md = new MarkdownIt({
@@ -36,12 +37,19 @@ export class ShowPreviewCommand {
             breaks: true,
             linkify: true,
         });
+        this.reset();
+    }
+
+    private reset(): void {
+        this.lastFile = '';
+        this.currentFile = '';
+        this.lastMessage = undefined;
     }
 
     show({ viewColumn, fsPath, textEditor }: { viewColumn?: vscode.ViewColumn, fsPath?: string, textEditor?: vscode.TextEditor }): void {
         this.currentFile = textEditor ? textEditor.document.uri.fsPath : fsPath!;
         this.createWebviewPanel(viewColumn);
-        this.resetWebviewPanel('loading');
+        //this.resetWebviewPanel('loading');
         this.updatePreviewWindow('content', textEditor);
         this.registerEvents();
     }
@@ -71,6 +79,7 @@ export class ShowPreviewCommand {
 
         webviewPanel.onDidDispose(() => {
             this.webviewPanel = undefined;
+            this.reset();
             resetCache();
         }, null, context.subscriptions);
 
@@ -92,7 +101,7 @@ export class ShowPreviewCommand {
     }
 
     public async reload(options?: { file: string, isUntitled: boolean }) {
-        this.resetWebviewPanel('loading');
+        this.resetWebviewPanel('loading', true);
         let file = options?.file;
         let isUntitled = options?.isUntitled;
 
@@ -133,37 +142,35 @@ export class ShowPreviewCommand {
             let originFilename = '';
             let isUntitled = false;
 
-            let html = '';
-            if (this.isSupportedFileOpened(textEditor)) {
-                lineNumber = activeEditor.selection.active.line + 1;
-                originFilename = activeEditor.document.fileName;
-                isUntitled = activeEditor.document.isUntitled;
-
-                this.webviewPanel.title = `TypeDoc Preview - ` + path.parse(originFilename).base;
-
-                if (isDifferentFile(originFilename)) {
-                    this.resetWebviewPanel('loading');
-                }
-
-                const tempFileUri = getUri('preview.ts');
-                const tempfile = tempFileUri.fsPath;
-                const editorText = activeEditor.document.getText();
-
-                await this.saveTempFile(tempFileUri, editorText);
-
-                const config = getConfig();
-                config.logging = false;
-                const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config);
-                html = this.md.render(markdown);
-            } else {
-                html = `<p><span style="color: red;">Unsupported file <b>${this.lastFile}</b></span>.<br/> Only typescript files are supported</p>`;
+            if (!this.isSupportedFileOpened(textEditor)) {
+                return;
             }
+            lineNumber = activeEditor.selection.active.line + 1;
+            originFilename = activeEditor.document.fileName;
+            isUntitled = activeEditor.document.isUntitled;
+
+            const title = `TypeDoc Preview - ${path.parse(originFilename).base}`;
+            this.webviewPanel.title = title;
+
+            if (isDifferentFile(originFilename)) {
+                this.resetWebviewPanel('loading', false);
+            }
+
+            const tempFileUri = getUri('preview.ts');
+            const tempfile = tempFileUri.fsPath;
+            const editorText = activeEditor.document.getText();
+
+            await this.saveTempFile(tempFileUri, editorText);
+
+            const config = getConfig();
+            config.logging = false;
+            config.logger = this.logger;
+            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config);
+            const html = this.md.render(markdown);
 
             if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
 
             const htmlContent = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
-
-            this.webviewPanel.webview.html = htmlContent.html;
             this.lastMessage = {
                 command: 'update',
                 file: originFilename,
@@ -171,22 +178,27 @@ export class ShowPreviewCommand {
                 isEmpty: htmlContent.isEmpty,
                 isUntitled: isUntitled
             };
+
+            this.webviewPanel.webview.html = htmlContent.html;
             this.webviewPanel.webview.postMessage(this.lastMessage);
         } catch (error) {
-            appendToLog('error', 'Failed to convert typedoc to markdown', error as Error);
+            this.logger.log('error', 'Failed to convert typedoc to markdown', error as Error);
         }
     }
 
-    private resetWebviewPanel(type: 'loading' | 'empty'): void {
+    private resetWebviewPanel(type: 'loading' | 'empty', updateTitle: boolean): void {
         if (this.webviewPanel && this.webviewPanel.webview) {
-            let title = `TypeDoc Preview`;
-            if (type === 'loading') {
-                const file = this.lastMessage?.file ?? '';
-                if (file !== '') {
-                    title = `TypeDoc Preview - ` + path.parse(file).base;
+            if (updateTitle) {
+                let title = `TypeDoc Preview2`;
+                if (type === 'loading') {
+                    const file = this.lastMessage?.file ?? '';
+                    if (file !== '') {
+                        title = `TypeDoc Preview2 - ` + path.parse(file).base;
+                    }
                 }
+                this.webviewPanel.title = title;
             }
-            this.webviewPanel.title = title;
+
             this.webviewPanel.webview.html = type === 'loading' ? loadingHtml : this.wrapHTMLContentInDoc(this.webviewPanel.webview, emptyContentHint).html;
 
             if (type === 'empty') {
@@ -309,7 +321,7 @@ export class ShowPreviewCommand {
             vscode.window.onDidChangeVisibleTextEditors(() => {
                 const lastConvertedFile = getLastConvertedFile();
                 if (!vscode.window.visibleTextEditors.some(x => x.document.fileName === lastConvertedFile)) {
-                    this.resetWebviewPanel('empty');
+                    //this.resetWebviewPanel('empty');
                 }
             }),
         );

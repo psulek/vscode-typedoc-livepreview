@@ -5,8 +5,7 @@ import {
     ContainerReflection, Comment, SignatureReflection, ProjectReflection, DocumentationEntryPoint
 } from 'typedoc';
 import { arraySortBy } from './utils';
-import { ExtensionConfig } from './types';
-import { appendToLog } from './logger';
+import { ConsoleLogger, ExtensionConfig } from './types';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const { BasePath } = require('typedoc');
@@ -63,10 +62,11 @@ const tscOptions = {
     // module: ts.ModuleKind.ESNext,
 
     target: ts.ScriptTarget.ES5,
+
     //module: ts.ModuleKind.,
 
-    // noLib: true,
-    // lib: ['es5'],
+    //noLib: true,
+    //lib: ['ES2020', 'DOM', 'WebWorker', 'ScriptHost'],
 
     declaration: false,
     declarationMap: false,
@@ -86,11 +86,14 @@ const tscOptions = {
 };
 
 let convertCounter = 0;
+const consoleLogger = new ConsoleLogger();
 
 export const isDifferentFile = (originFilename: string) => lastConversion.originFilename !== originFilename;
 
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
     editorLine: number, mode: PreviewUpdateMode, config: ExtensionConfig): Promise<string> {
+
+    const logger = config.logger ?? consoleLogger;
     let markdown = '';
     const dateNow = Date.now();
     const logging = config.logging ?? false;
@@ -125,7 +128,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                 entryPoints: [sourceFile],
                 plugin: ['typedoc-plugin-markdown'],
                 // eslint-disable-next-line @typescript-eslint/naming-convention
-                pluginInstanes: {'typedoc-plugin-markdown': pluginMarkdown},
+                pluginInstanes: { 'typedoc-plugin-markdown': pluginMarkdown },
                 skipErrorChecking: true,
                 hideGenerator: true,
                 readme: 'none',
@@ -411,7 +414,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
             recurseChildren(project);
         } catch (error) {
-            appendToLog('error', `Error compiling '${originFilename}' into typedoc structures`, error as Error);
+            logger.log('error', `Error compiling '${originFilename}' into typedoc structures`, error as Error);
         }
 
         //log(`compiling file: ${originFilename} completed with ${compiledReflections.length} reflections in ` + calcDuration(dateNow, Date.now()));
@@ -470,6 +473,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
                 const renderer = lastConversion.app.renderer;
                 const theme = renderer.theme!;
+                renderer.trigger(PageEvent.BEGIN, page);
 
                 let mdString = '';
                 if (comment || signature) {
@@ -528,7 +532,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                     }
                 }
             } catch (error) {
-                appendToLog('error', `Error rendering typedoc structures into markdown (file: '${originFilename}')`, error as Error);
+                logger.log('error', `Error rendering typedoc structures into markdown (file: '${originFilename}')`, error as Error);
             }
 
             return result;

@@ -4,7 +4,8 @@
 (
   level, 
   message, 
-  error?): void
+  error?, 
+  map?): void
 ```
 
 Logs message and/or error at specified log level.
@@ -17,6 +18,7 @@ Logs message and/or error at specified log level.
 | `level` | `string` | log level |
 | `message` | `string` | log message |
 | `error`? | `Error` | log error (optional) |
+| `map`? | `Map`\< `string`, `number` \> | this a map |
 
 
 ## Returns
