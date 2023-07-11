@@ -15,12 +15,5 @@
     "exclude": [
         "node_modules/typedoc/**/*",
         "preview.ts"
-    ],
-    "ts-node": {
-        "esm": true,
-        "compilerOptions": {
-            "target": "es2017",
-            "module": "Node16"
-        }
-    }
+    ]
 }
