@@ -7,19 +7,24 @@ A `vscode` extension to show live preview of typescript documentation using `tsd
 
 ## Features
 
-- Live preview of typescript documentation (tsdoc or typedoc)
-- Light & dark theme support (autodetect)
+### Light & dark theme support (autodetect)
+Theme (light or dark) is automatically detect from vscode theme.
 ![demo](./demo/demo2.gif)
-- Show or hide empty methods/fuctions signatures
+
+
+### Show/hide empty signatures
+Show or hide methods/fuctions with no documentation signatures.
 ![demo](./demo/demo3.gif)
 
 
 ## Commands
 
-| Command                               | Keybinding   |
-| ------------------------------------- | ------------ |
+| Command                                        | Keybinding       |
+| ---------------------------------------------- | ---------------- |
 | TypeDoc Live Preview: Open Preview to the Side | `Ctrl + Alt + P` |
-| TypeDoc Live Preview: Reload Preview           | none         |
+| TypeDoc Live Preview: Reload Preview           | none             |
+| TypeDoc Live Preview: Show empty signatures    | none             |
+| TypeDoc Live Preview: Hide empty signatures    | none             |
 
 ## Install
 

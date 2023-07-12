@@ -1,6 +1,6 @@
-// _testcase: class|8-11
-// _testcase: ctor|12-18
-// _testcase: dataProp|20-23
+// testcase: class|8-11
+// testcase: ctor|12-18
+// testcase: dataProp|20-23
 // testcase: log|25-47
 
 //import { ILogger, LogLevel } from './tc005';

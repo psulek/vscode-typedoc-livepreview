@@ -275,7 +275,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                         let endline = modelSources.line;
 
                         let bodyStartLine = 0;
-                        if (body) {
+                        if (body && model.kind !== ReflectionKind.Namespace) {
                             const startPos = jsDoc ? jsDoc.pos : body.pos;
                             startline = getSourceLine(startPos);
                             endline = getSourceLine(body.end);

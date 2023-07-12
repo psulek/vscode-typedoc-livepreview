@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { configKeys, contextIsInitialized, downloadTypescriptLibs, initContext, isTypescriptFile, setTheme, updateConfig, waitForContext } from './shared';
+import { configKeys, contextIsInitialized, initContext, isTypescriptFile, setTheme, updateConfig, waitForContext } from './shared';
 import { previewPanel } from './previewCommand';
 
 export function activate(context: vscode.ExtensionContext) {
