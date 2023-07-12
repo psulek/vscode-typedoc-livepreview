@@ -1,14 +1,18 @@
 import * as vscode from 'vscode';
-import { configKeys, init, isTypescriptFile, setTheme, updateConfig } from './shared';
+import { configKeys, contextIsInitialized, downloadTypescriptLibs, initContext, isTypescriptFile, setTheme, updateConfig, waitForContext } from './shared';
 import { previewPanel } from './previewCommand';
 
 export function activate(context: vscode.ExtensionContext) {
-    init(context);
+    initContext(context);
 
-    const showPreview = (column: vscode.ViewColumn, textEditor?: vscode.TextEditor, uri?: vscode.Uri) => {
+    async function showPreview(column: vscode.ViewColumn, textEditor?: vscode.TextEditor, uri?: vscode.Uri) {
         const isValidFile = (uri && isTypescriptFile(uri)) || (textEditor && isTypescriptFile(textEditor.document));
         if (!isValidFile) {
             return;
+        }
+
+        if (!contextIsInitialized()) {
+            await waitForContext();
         }
 
         previewPanel.show({
@@ -17,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
             textEditor: textEditor
         });
     };
-    
+
     setTheme(vscode.window.activeColorTheme.kind);
 
     context.subscriptions.push(
@@ -28,12 +32,12 @@ export function activate(context: vscode.ExtensionContext) {
 
         vscode.commands.registerCommand(
             'typedocPreview.showEmptySignatures',
-            () => updateConfig({hideEmptySignatures: false})
+            () => updateConfig({ hideEmptySignatures: false })
         ),
 
         vscode.commands.registerCommand(
             'typedocPreview.hideEmptySignatures',
-            () => updateConfig({hideEmptySignatures: true})
+            () => updateConfig({ hideEmptySignatures: true })
         ),
 
         vscode.commands.registerTextEditorCommand(

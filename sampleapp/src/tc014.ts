@@ -1,18 +1,21 @@
-// testcase: log|25-47
+// _testcase: class|8-11
+// _testcase: ctor|12-18
+// _testcase: dataProp|20-23
+// testcase: log|12-34
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+//import { ILogger, LogLevel } from './tc005';
 
 /**
  * Console logger `implementation`. {@link LogLevel}. @see LogLevel
  */
-export class ConsoleLogger {
+export class ConsoleLogger implements ILogger {
     /**
      * Log message into console logger.
      * @param level - level of logging message
      * @param message - content of log message
      * @param error - optional error (in case of logging catched exception)
      */
-    public log(level: LogLevel, message: string, error: Error): void {
+    public log(level: LogLevel, message: string, error?: Error | undefined): void {
         switch (level) {
             case 'debug':
             case 'info': {

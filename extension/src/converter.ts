@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as ts from 'typescript';
+//import * as tsvfs from '@typescript/vfs';
 import {
     Application, DeclarationReflection, PageEvent, Reflection, LogLevel, ReflectionKind,
     ContainerReflection, Comment, SignatureReflection, ProjectReflection, DocumentationEntryPoint
@@ -55,6 +56,8 @@ export function resetCache(): void {
         reflections: [] as DeclarationReflectionInfo[]
     };
     debugs.length = 0;
+
+    //tsvfs.createVirtualTypeScriptEnvironment(system, ["index.ts"], ts, compilerOpts).languageService.getSignatureHelpItems()?.items[0].
 }
 
 const tscOptions = {
@@ -90,8 +93,13 @@ const consoleLogger = new ConsoleLogger();
 
 export const isDifferentFile = (originFilename: string) => lastConversion.originFilename !== originFilename;
 
+export type TypescriptLibsConfig = {
+    root?: string;
+    libs?: string[]
+};
+
 export async function convertTypeDocToMarkdown(sourceFile: string, originFilename: string,
-    editorLine: number, mode: PreviewUpdateMode, config: ExtensionConfig): Promise<string> {
+    editorLine: number, mode: PreviewUpdateMode, config: ExtensionConfig, tsLibsConfig?: TypescriptLibsConfig): Promise<string> {
 
     const logger = config.logger ?? consoleLogger;
     let markdown = '';
@@ -147,7 +155,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
             app.options.setCompilerOptions([sourceFile], tscOptions, undefined);
 
-            const { project, entryPoints } = app.convert() as unknown as { project: ProjectReflection, entryPoints: DocumentationEntryPoint[] };
+            const { project, entryPoints } = (app.convert as any)(tsLibsConfig) as unknown as { project: ProjectReflection, entryPoints: DocumentationEntryPoint[] };
             const renderer = app.renderer;
             (renderer as any).prepareTheme();
 

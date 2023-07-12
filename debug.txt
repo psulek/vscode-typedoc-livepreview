@@ -1,1 +1,92 @@
 https://stackoverflow.com/questions/39003860/how-can-i-debug-installed-vscode-extensions
+
+https://github.com/microsoft/vscode/wiki/Adopting-Multi-Root-Workspace-APIs#eliminating-rootpath
+
+
+
+// function createVFSProgram(options) {
+//     const compilerOptions = { target: 1, esModuleInterop: true }
+//     const file = options.getFileNames()[0];
+//     const fsMap = tsvfs.createDefaultMapFromNodeModules(compilerOptions);
+//     fsMap.set(Path.basename(file), fs_1.readFile(file));
+
+//     const system = tsvfs.createSystem(fsMap);
+//     const host = tsvfs.createVirtualCompilerHost(system, compilerOptions, typescript_1.default);
+
+//     const program = typescript_1.default.createProgram({
+//         rootNames: options.getFileNames(),
+//         options: options.getCompilerOptions(),
+//         projectReferences: options.getProjectReferences(),
+//         host: host.compilerHost
+//     });
+
+//     program.emit();
+//     return program;
+// }
+
+function createVFSProgram2(options) {
+    //const compilerOptions = options.getCompilerOptions();
+    const ts = typescript_1.default;
+    const compilerOptions = { target: 1 };
+    const file = options.getFileNames()[0];
+
+    tsvfs.knownLibFilesForCompilerOptions(compilerOptions, ts);
+
+    const fsMap = tsvfs.createDefaultMapFromNodeModules(compilerOptions, ts);
+    fsMap.set(Path.basename(file), fs_1.readFile(file));
+
+    const system = tsvfs.createSystem(fsMap);
+    const host = tsvfs.createVirtualCompilerHost(system, compilerOptions, ts);
+
+    const program = ts.createProgram({
+        //rootNames: options.getFileNames(),
+        rootNames: [...fsMap.keys()],
+        options: compilerOptions,
+        projectReferences: options.getProjectReferences(),
+        host: host.compilerHost
+    });
+
+    //program.emit();
+    return program;
+}
+
+// function createVFSProgram3(options) {
+//     const compilerOptions = options.getCompilerOptions();
+//     const file = options.getFileNames()[0];
+//     const languageServiceHost = createTSLanguageServiceHost(file, compilerOptions);
+//     const languageServer = typescript_1.default.createLanguageService(languageServiceHost);
+//     return languageServer.getProgram();
+// }
+
+// function createTSLanguageServiceHost(file, compilerOptions) {
+//     //const tsCompilerOptions = {};
+
+//     //const fsMap = tsvfs.createDefaultMapFromNodeModules(compilerOptions);
+//     const fsMap = tsvfs.createDefaultMapFromNodeModules({ target: 1 });
+//     //fsMap.set(this.fileName, this.code);
+//     fsMap.set(Path.basename(file), fs_1.readFile(file));
+
+//     const system = tsvfs.createSystem(fsMap);
+//     const { languageServiceHost } = tsvfs.createVirtualLanguageServiceHost(
+//         system,
+//         [file],
+//         compilerOptions,
+//         typescript_1.default
+//     );
+
+//     return languageServiceHost;
+// }
+
+
+
+    //const tsPath = path.dirname(require.resolve("typescript"));
+    //const libs = tsvfs.knownLibFilesForCompilerOptions({ target: 1 }, ts);
+    //const typeRoots = ['./node_modules/@types/', './node_modules/typescript/lib/'];
+    // libs.forEach(lib => {
+    //     typeRoots.push('./node_modules/typescript/lib/' + lib);
+    // });
+
+    //const compilerOptions = Object.assign({}, options.getCompilerOptions(), { typeRoots: typeRoots });
+
+
+    //const fsMap = tsvfs.createDefaultMapFromNodeModules({target: 1});

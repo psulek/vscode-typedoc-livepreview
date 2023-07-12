@@ -1,0 +1,93 @@
+diff --git a/node_modules/typedoc-plugin-markdown/dist/support/utils.js b/node_modules/typedoc-plugin-markdown/dist/support/utils.js
+index d0dc105..6295a85 100644
+--- a/node_modules/typedoc-plugin-markdown/dist/support/utils.js
++++ b/node_modules/typedoc-plugin-markdown/dist/support/utils.js
+@@ -61,7 +61,8 @@ function stripLineBreaks(str, includeHTML = true) {
+         .replace(/\n(?=(?:[^`]*`[^`]*`)*[^`]*$)/gi, includeHTML ? '<br />' : ' ')
+         .replace(/\`\`\`ts/g, '`')
+         .replace(/\`\`\`/g, '`')
+-        .replace(/\n/g, ' ');
++        .replace(/\n/g, ' ')
++        .replace(/\r/g, '');
+ }
+ exports.stripLineBreaks = stripLineBreaks;
+ function camelToTitleCase(text) {
+diff --git a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/member.declaration.identifier.js b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/member.declaration.identifier.js
+index c84675a..214b182 100644
+--- a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/member.declaration.identifier.js
++++ b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/member.declaration.identifier.js
+@@ -39,7 +39,7 @@ function declarationMemberIdentifier(context, reflection) {
+         md.push(`${context.someType(declarationType, true)}`);
+     }
+     if (reflection.defaultValue && reflection.defaultValue !== '...') {
+-        md.push(` = \`${(0, utils_1.stripLineBreaks)((0, utils_1.stripComments)(reflection.defaultValue))}\``);
++        md.push(` = \`${(0, utils_1.stripLineBreaks)((0, utils_1.stripComments)(reflection.defaultValue), false)}\``);
+     }
+     return md.join(' ');
+ }
+diff --git a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.enum-members.js b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.enum-members.js
+index c404973..925d711 100644
+--- a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.enum-members.js
++++ b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.enum-members.js
+@@ -20,12 +20,12 @@ function enumMembersTable(context, props) {
+         const row = [];
+         row.push((0, elements_1.backTicks)(property.name));
+         if (propertyType) {
+-            row.push((0, utils_1.stripLineBreaks)((0, elements_1.backTicks)(context.someType(propertyType, true))));
++            row.push((0, utils_1.stripLineBreaks)((0, elements_1.backTicks)(context.someType(propertyType, true)), false));
+         }
+         if (hasComments) {
+             const comments = getComments(property);
+             if (comments) {
+-                row.push((0, utils_1.stripLineBreaks)(context.comment(comments)).replace(/\|/g, '\\|'));
++                row.push((0, utils_1.stripLineBreaks)(context.comment(comments), false).replace(/\|/g, '\\|'));
+             }
+             else {
+                 row.push('-');
+diff --git a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.parameters.js b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.parameters.js
+index b4aeb08..6927b55 100644
+--- a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.parameters.js
++++ b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.parameters.js
+@@ -46,14 +46,14 @@ function parametersTable(context, parameters) {
+         const optional = isOptional ? '?' : '';
+         row.push(`${rest}${(0, elements_1.backTicks)(parameter.name)}${optional}`);
+         if (parameter.type) {
+-            row.push((0, utils_1.stripLineBreaks)(context.someType(parameter.type, true)));
++            row.push((0, utils_1.stripLineBreaks)(context.someType(parameter.type, true), false));
+         }
+         if (showDefaults) {
+             row.push(getDefaultValue(parameter));
+         }
+         if (hasComments) {
+             if (parameter.comment) {
+-                row.push((0, utils_1.stripLineBreaks)((0, utils_1.tableComments)(context.comment(parameter.comment))));
++                row.push((0, utils_1.stripLineBreaks)((0, utils_1.tableComments)(context.comment(parameter.comment)), false));
+             }
+             else {
+                 row.push('-');
+diff --git a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.properties.js b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.properties.js
+index 128ffea..a91ecea 100644
+--- a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.properties.js
++++ b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.properties.js
+@@ -55,7 +55,7 @@ function propertiesTable(context, props, nameCol = 'Property') {
+         if (hasComments) {
+             const comments = getComments(property);
+             if (comments) {
+-                row.push((0, utils_1.stripLineBreaks)((0, utils_1.tableComments)(context.comment(comments))));
++                row.push((0, utils_1.stripLineBreaks)((0, utils_1.tableComments)(context.comment(comments)), false));
+             }
+             else {
+                 row.push('-');
+diff --git a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.typeparameters.js b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.typeparameters.js
+index 888f769..3b25800 100644
+--- a/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.typeparameters.js
++++ b/node_modules/typedoc-plugin-markdown/dist/theme/resources/partials/table.typeparameters.js
+@@ -35,7 +35,7 @@ function typeParametersTable(context, typeParameters) {
+         }
+         if (hasComments) {
+             if (typeParameter.comment) {
+-                row.push((0, utils_1.stripLineBreaks)((0, utils_1.tableComments)(context.comment(typeParameter.comment))));
++                row.push((0, utils_1.stripLineBreaks)((0, utils_1.tableComments)(context.comment(typeParameter.comment)), false));
+             }
+             else {
+                 row.push('-');

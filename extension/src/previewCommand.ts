@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import MarkdownIt from 'markdown-it';
-import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig, isTypescriptFile, VsCodeLogger } from './shared';
+import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig, isTypescriptFile, VsCodeLogger, vsCodeLogger, tsLibraryFiles } from './shared';
 import { asyncDebounce } from './utils';
-import { PreviewUpdateMode, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
+import { PreviewUpdateMode, TypescriptLibsConfig, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
 import { PostMessage } from './types';
 
 let debouncedUpdatePreview: Function;
@@ -28,10 +28,11 @@ export class ShowPreviewCommand {
     private lastFile = '';
     private currentFile = '';
     private lastMessage?: PostMessage;
-    private logger = new VsCodeLogger();
-
+    private logger: VsCodeLogger = null!;
+    private lastWorkspaceRoot: string | undefined;
 
     constructor() {
+        this.logger = vsCodeLogger;
         this.md = new MarkdownIt({
             html: false,
             breaks: true,
@@ -146,8 +147,9 @@ export class ShowPreviewCommand {
                 return;
             }
             lineNumber = activeEditor.selection.active.line + 1;
-            originFilename = activeEditor.document.fileName;
-            isUntitled = activeEditor.document.isUntitled;
+            const document = activeEditor.document;
+            originFilename = document.fileName;
+            isUntitled = document.isUntitled;
 
             const title = `TypeDoc Preview - ${path.parse(originFilename).base}`;
             this.webviewPanel.title = title;
@@ -158,19 +160,33 @@ export class ShowPreviewCommand {
 
             const tempFileUri = getUri('preview.ts');
             const tempfile = tempFileUri.fsPath;
-            const editorText = activeEditor.document.getText();
+            const editorText = document.getText();
 
             await this.saveTempFile(tempFileUri, editorText);
 
             const config = getConfig();
             config.logging = false;
             config.logger = this.logger;
-            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config);
+            
+            let workspaceRoot = vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
+            if (workspaceRoot && workspaceRoot.length > 0) {
+                this.lastWorkspaceRoot = workspaceRoot;
+            } else if (isUntitled) {
+                workspaceRoot  = this.lastWorkspaceRoot;
+            }
+
+            const tsLibConfig: TypescriptLibsConfig = {
+                root: workspaceRoot,
+                libs: tsLibraryFiles
+            };
+            
+            const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config, tsLibConfig);
             const html = this.md.render(markdown);
 
             if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
 
             const htmlContent = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
+            
             this.lastMessage = {
                 command: 'update',
                 file: originFilename,

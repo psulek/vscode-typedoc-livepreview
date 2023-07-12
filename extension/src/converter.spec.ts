@@ -26,9 +26,10 @@ async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
+        const filterTests = '';
+        // const filterTests = 'tc010.ts';
         //const filterTests = 'tc014.ts';
-        const filterTests = 'tc002.ts';
-        //const filterTests = '';
+        // const filterTests = 'tc002.ts';
 
         const colorNumber = chalk.blueBright;
         const colorFile = chalk.cyan;
@@ -61,7 +62,6 @@ async function main() {
             const file = path.resolve(dirTestCases, testCase);
             log(`\n[${++idx}/${totalCount}] Processing test case '${colorFile(file)}'`);
 
-            //const lines = await readFileLinesUntil(file, x => x.startsWith(fileHeader) ? 'accept' : 'stop');
             const lines = (await readFileLinesUntil(file, _ => 'accept')).filter(x => x.startsWith(fileHeader));
 
             if (lines.length > 0) {

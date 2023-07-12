@@ -36,6 +36,22 @@ export async function delay(ms: number): Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
+export async function pathExist(path: fs.PathLike): Promise<boolean> {
+    try {
+        await fs.promises.access(path, fs.constants.F_OK);
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+export async function pathStats(path: fs.PathLike): Promise<fs.Stats | undefined> {
+    try {
+        return fs.promises.stat(path);
+    } catch (error) {
+        return undefined;
+    }
+}
 
 export async function readFileLinesUntil(file: string, predicate: (line: string) => 'accept' | 'stop'): Promise<string[]> {
     const result: string[] = [];

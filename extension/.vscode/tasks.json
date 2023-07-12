@@ -30,6 +30,14 @@
                 "kind": "test",
                 "isDefault": true
             }
+        },
+        {
+            "type": "npm",
+            "script": "compile",
+            "group": "build",
+            "problemMatcher": ["$tsc"],
+            "label": "compile",
+            "detail": "npm run esbuild-base -- --sourcemap"
         }
     ]
 }

@@ -11,7 +11,7 @@ index fc8c189..575b542 100644
  const typescript_1 = __importDefault(require("typescript"));
  exports.TypeScript = typescript_1.default;
 diff --git a/node_modules/typedoc/dist/lib/application.js b/node_modules/typedoc/dist/lib/application.js
-index 98f4da0..68f9578 100644
+index 98f4da0..b667302 100644
 --- a/node_modules/typedoc/dist/lib/application.js
 +++ b/node_modules/typedoc/dist/lib/application.js
 @@ -99,7 +99,7 @@ let Application = exports.Application = Application_1 = class Application extend
@@ -33,6 +33,34 @@ index 98f4da0..68f9578 100644
      }
      getTypeScriptVersion() {
          return typescript_1.default.version;
+@@ -151,15 +152,15 @@ let Application = exports.Application = Application_1 = class Application extend
+      * Gets the entry points to be documented according to the current `entryPoints` and `entryPointStrategy` options.
+      * May return undefined if entry points fail to be expanded.
+      */
+-    getEntryPoints() {
+-        return (0, entry_point_1.getEntryPoints)(this.logger, this.options);
++    getEntryPoints(tsLibsConfig) {
++        return (0, entry_point_1.getEntryPoints)(this.logger, this.options, tsLibsConfig);
+     }
+     /**
+      * Run the converter for the given set of files and return the generated reflections.
+      *
+      * @returns An instance of ProjectReflection on success, undefined otherwise.
+      */
+-    convert() {
++    convert(tsLibsConfig) {
+         const start = Date.now();
+         // We freeze here rather than in the Converter class since TypeDoc's tests reuse the Application
+         // with a few different settings.
+@@ -174,7 +175,7 @@ let Application = exports.Application = Application_1 = class Application extend
+         if (!supportedVersionMajorMinor.some((version) => version == typescript_1.default.versionMajorMinor)) {
+             this.logger.warn(`You are running with an unsupported TypeScript version! If TypeDoc crashes, this is why. TypeDoc supports ${supportedVersionMajorMinor.join(", ")}`);
+         }
+-        const entryPoints = this.getEntryPoints();
++        const entryPoints = this.getEntryPoints(tsLibsConfig);
+         if (!entryPoints) {
+             // Fatal error already reported.
+             return;
 @@ -197,7 +198,7 @@ let Application = exports.Application = Application_1 = class Application extend
          this.logger.verbose(`Finished getting entry points in ${Date.now() - start}ms`);
          const project = this.converter.convert(entryPoints);
@@ -276,6 +304,107 @@ index 19deae5..b7446ec 100644
      getReferenceGraph() {
          if (!this.referenceGraph) {
              this.referenceGraph = new Map();
+diff --git a/node_modules/typedoc/dist/lib/utils/entry-point.js b/node_modules/typedoc/dist/lib/utils/entry-point.js
+index d1e9830..575f56d 100644
+--- a/node_modules/typedoc/dist/lib/utils/entry-point.js
++++ b/node_modules/typedoc/dist/lib/utils/entry-point.js
+@@ -1,18 +1,18 @@
+ "use strict";
+-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
++var __createBinding = (this && this.__createBinding) || (Object.create ? (function (o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     var desc = Object.getOwnPropertyDescriptor(m, k);
+     if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+-      desc = { enumerable: true, get: function() { return m[k]; } };
++        desc = { enumerable: true, get: function () { return m[k]; } };
+     }
+     Object.defineProperty(o, k2, desc);
+-}) : (function(o, m, k, k2) {
++}) : (function (o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+ }));
+-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
++var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function (o, v) {
+     Object.defineProperty(o, "default", { enumerable: true, value: v });
+-}) : function(o, v) {
++}) : function (o, v) {
+     o["default"] = v;
+ });
+ var __importStar = (this && this.__importStar) || function (mod) {
+@@ -29,6 +29,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.getExpandedEntryPointsForPaths = exports.getPackageDirectories = exports.getWatchEntryPoints = exports.getEntryPoints = exports.EntryPointStrategy = void 0;
+ const path_1 = require("path");
+ const typescript_1 = __importDefault(require("typescript"));
++const tsvfs = __importDefault(require("@typescript/vfs"));
+ const FS = __importStar(require("fs"));
+ const Path = __importStar(require("path"));
+ const package_manifest_1 = require("./package-manifest");
+@@ -66,7 +67,7 @@ exports.EntryPointStrategy = {
+      */
+     Merge: "merge",
+ };
+-function getEntryPoints(logger, options) {
++function getEntryPoints(logger, options, tsLibsConfig) {
+     if (!options.isSet("entryPoints")) {
+         logger.warn("No entry points were provided, this is likely a misconfiguration.");
+         return [];
+@@ -81,7 +82,7 @@ function getEntryPoints(logger, options) {
+     const strategy = options.getValue("entryPointStrategy");
+     switch (strategy) {
+         case exports.EntryPointStrategy.Resolve:
+-            result = getEntryPointsForPaths(logger, expandGlobs(entryPoints, logger), options);
++            result = getEntryPointsForPaths(logger, expandGlobs(entryPoints, logger), options, tsLibsConfig);
+             break;
+         case exports.EntryPointStrategy.Expand:
+             result = getExpandedEntryPointsForPaths(logger, expandGlobs(entryPoints, logger), options);
+@@ -141,7 +142,7 @@ function getModuleName(fileName, baseDir) {
+  * Converts a list of file-oriented paths in to DocumentationEntryPoints for conversion.
+  * This is in contrast with the package-oriented `getEntryPointsForPackages`
+  */
+-function getEntryPointsForPaths(logger, inputFiles, options, programs = getEntryPrograms(logger, options)) {
++function getEntryPointsForPaths(logger, inputFiles, options, tsLibsConfig, programs = getEntryPrograms(logger, options, tsLibsConfig)) {
+     const baseDir = options.getValue("basePath") || (0, fs_1.deriveRootDir)(inputFiles);
+     const entryPoints = [];
+     entryLoop: for (const fileOrDir of inputFiles.map(paths_1.normalizePath)) {
+@@ -192,10 +193,23 @@ function expandGlobs(inputFiles, logger) {
+     });
+     return result;
+ }
+-function getEntryPrograms(logger, options) {
+-    const rootProgram = typescript_1.default.createProgram({
+-        rootNames: options.getFileNames(),
+-        options: options.getCompilerOptions(),
++function getEntryPrograms(logger, options, tsLibsConfig = {}) {
++    const ts = typescript_1.default;
++    const compilerOptions = options.getCompilerOptions();
++    const rootNames = options.getFileNames();
++
++    const libs = tsLibsConfig.libs && tsLibsConfig.libs.length > 0 ? tsLibsConfig.libs : tsvfs.knownLibFilesForCompilerOptions({ target: 1 }, ts);
++    libs.forEach(lib => {
++        if (!Path.isAbsolute(lib)) {
++            lib = './node_modules/typescript/lib/' + lib;
++            lib = tsLibsConfig.root ? Path.resolve(tsLibsConfig.root, lib) : lib
++        }
++        rootNames.push(lib);
++    });
++
++    const rootProgram = ts.createProgram({
++        rootNames: rootNames,
++        options: compilerOptions,
+         projectReferences: options.getProjectReferences(),
+     });
+     const programs = [rootProgram];
+@@ -216,6 +230,9 @@ function getEntryPrograms(logger, options) {
+     }
+     return programs;
+ }
++
++
++
+ /**
+  * Expand a list of input files.
+  *
 diff --git a/node_modules/typedoc/dist/lib/utils/loggers.js b/node_modules/typedoc/dist/lib/utils/loggers.js
 index 727254d..6080d84 100644
 --- a/node_modules/typedoc/dist/lib/utils/loggers.js

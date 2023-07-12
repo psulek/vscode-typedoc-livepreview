@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { EmptySignaturesTypes, ExtensionConfig, ILogger } from './types';
+import * as ts from 'typescript';
+import * as tsvfs from '@typescript/vfs';
+import fetch from 'node-fetch';
+import { pathExist, pathStats, promiseEachSeries } from './utils';
 
 export type VsCodeTheme = 'light' | 'dark';
 
@@ -23,8 +28,104 @@ export class VsCodeLogger implements ILogger {
     }
 }
 
-export function init(ctx: vscode.ExtensionContext): void {
+export const vsCodeLogger = new VsCodeLogger();
+
+export const tsLibraryFiles: string[] = [];
+
+let contextInitialized = false;
+
+export const contextIsInitialized = (): boolean => contextInitialized;
+
+export function waitForContext(): Promise<void> {
+    return new Promise(resolve => {
+        const end = Date.now() + (10 * 1000);
+        let ref: NodeJS.Timer | undefined = setInterval(() => {
+            if (ref && (contextInitialized || (Date.now() >= end))) {
+                clearInterval(ref);
+                ref = undefined;
+                resolve();
+            }
+        }, 10);
+    });
+}
+
+export function initContext(ctx: vscode.ExtensionContext): void {
     context = ctx;
+
+    (async () => {
+        try {
+            await downloadTypescriptLibs();
+        } finally {
+            contextInitialized = true;
+        }
+    })();
+}
+
+export async function downloadTypescriptLibs(): Promise<void> {
+    try {
+        const tsVersion = ts.version;
+        const tsLibsPath = 'tslibs/';
+        const versionFileUri = getUri(`${tsLibsPath}version.txt`);
+        const knownLibFiles = tsvfs.knownLibFilesForCompilerOptions({ target: 1 }, ts);
+
+        let download = true;
+        if ((await pathExist(versionFileUri.fsPath))) {
+            tsLibraryFiles.length = 0;
+            try {
+                const versionFile = Buffer.from(await vscode.workspace.fs.readFile(versionFileUri)).toString('utf8');
+                if (versionFile && versionFile.length > 0) {
+                    const versionFileJson = JSON.parse(versionFile);
+                    if (versionFileJson.tsVersion === tsVersion) {
+                        let libFilesValid = false;
+                        await promiseEachSeries(knownLibFiles, async libFile => {
+                            const libPath = getUri(`${tsLibsPath}${libFile}`).fsPath;
+                            const stats = await pathStats(libPath);
+                            libFilesValid = stats !== undefined && stats.size > 0;
+                            if (libFilesValid) {
+                                tsLibraryFiles.push(libPath);
+                            }
+                            return libFilesValid;
+                        });
+
+                        download = !libFilesValid;
+                    }
+                }
+            } catch (error) {
+                vsCodeLogger.log('error', `Failed to load/parse '${versionFileUri.fsPath}' file!`, error as Error);
+            }
+        }
+
+        if (download) {
+            const prefix = `https://typescript.azureedge.net/cdn/${tsVersion}/typescript/lib/`;
+            vsCodeLogger.log('info', `Downloading basic typescript libs (CDN: ${prefix}) into extension folder`);
+
+            tsLibraryFiles.length = 0;
+
+            const libs = (await Promise.all(knownLibFiles.map(lib => fetch(prefix + lib).then(resp => resp.status === 200 ? resp.text() : undefined))));
+            let valid = 0;
+            await promiseEachSeries(libs, async (text, index) => {
+                if (text) {
+                    const fileUri = getUri(tsLibsPath + knownLibFiles[index]);
+                    tsLibraryFiles.push(fileUri.fsPath);
+                    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(text, 'utf8'));
+                    valid++;
+                }
+            });
+
+            if (libs.length === valid) {
+                const versionFileContent = { tsVersion };
+                await vscode.workspace.fs.writeFile(versionFileUri, Buffer.from(JSON.stringify(versionFileContent, null, 2), 'utf8'));
+
+                vsCodeLogger.log('info', `Successfully downloaded basic typescript libs`);
+            } else {
+                vsCodeLogger.log('warn', `Downloaded only ${valid} out of ${libs.length} required typescript libs`);
+            }
+        } else {
+            vsCodeLogger.log('info', `Found local cache of typescript libs at path: ` + getUri(tsLibsPath).fsPath);
+        }
+    } catch (error) {
+        vsCodeLogger.log('error', 'Failed to download typescript libs from CDN', error as Error);
+    }
 }
 
 export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument): boolean {

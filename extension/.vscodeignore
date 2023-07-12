@@ -21,3 +21,4 @@ patches
 media/test.html
 
 out/tests/**
+tslibs
