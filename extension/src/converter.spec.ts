@@ -7,7 +7,9 @@ import * as normalize from 'crlf-normalize';
 import { convertTypeDocToMarkdown } from './converter';
 import { arraySortBy, promiseEachSeries, readFileLinesUntil } from './utils';
 import { ExtensionConfig } from './types';
-import { findFiles } from './converter.spec.utils';
+import type { IOptions as globOptions } from 'glob';
+
+const glob = require('glob-all');
 
 const fileHeader = `// testcase:`;
 const log = console.log;
@@ -26,9 +28,9 @@ async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
-        // const filterTests = '';
+        const filterTests = '';
         // const filterTests = 'tc010.ts';
-        const filterTests = 'tc014.ts';
+        // const filterTests = 'tc014.ts';
         // const filterTests = 'tc002.ts';
 
         const colorNumber = chalk.blueBright;
@@ -182,5 +184,10 @@ async function main() {
         log(colorError(error));
     }
 }
+
+function findFiles(globPattern: string | string[], options?: globOptions & { dotRelative?: boolean }): Promise<string[]> {
+    return new Promise<string[]>((resolve, reject) => glob(globPattern, options, (err: Error, result: string[]) => err ? reject(err) : resolve(result)));
+}
+
 
 main();

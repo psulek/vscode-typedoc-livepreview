@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import MarkdownIt from 'markdown-it';
-import { getUri, context, webViewPanelType, getMediaUri, setTheme, getConfig, isTypescriptFile, VsCodeLogger, vsCodeLogger, tsLibraryFiles } from './shared';
+import { webViewPanelType, isTypescriptFile, VsCodeLogger, vsCodeLogger, context } from './context';
 import { asyncDebounce } from './utils';
 import { PreviewUpdateMode, TypescriptLibsConfig, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
 import { PostMessage } from './types';
@@ -73,7 +73,7 @@ export class ShowPreviewCommand {
                 enableCommandUris: true,
                 //retainContextWhenHidden: true,
                 localResourceRoots: [
-                    getUri('media')
+                    context.getUri('media')
                 ]
             }
         );
@@ -82,7 +82,7 @@ export class ShowPreviewCommand {
             this.webviewPanel = undefined;
             this.reset();
             resetCache();
-        }, null, context.subscriptions);
+        }, null, context.vsContext.subscriptions);
 
         webviewPanel.onDidChangeViewState(e => {
             if (this.webviewPanel?.visible && debouncedUpdatePreview) {
@@ -158,35 +158,35 @@ export class ShowPreviewCommand {
                 this.resetWebviewPanel('loading', false);
             }
 
-            const tempFileUri = getUri('preview.ts');
+            const tempFileUri = context.getUri('preview.ts');
             const tempfile = tempFileUri.fsPath;
             const editorText = document.getText();
 
             await this.saveTempFile(tempFileUri, editorText);
 
-            const config = getConfig();
+            const config = context.getConfig();
             config.logging = false;
             config.logger = this.logger;
-            
+
             let workspaceRoot = vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
             if (workspaceRoot && workspaceRoot.length > 0) {
                 this.lastWorkspaceRoot = workspaceRoot;
             } else if (isUntitled) {
-                workspaceRoot  = this.lastWorkspaceRoot;
+                workspaceRoot = this.lastWorkspaceRoot;
             }
 
             const tsLibConfig: TypescriptLibsConfig = {
                 root: workspaceRoot,
-                libs: tsLibraryFiles
+                libs: context.tsLibraryFiles
             };
-            
+
             const markdown = await convertTypeDocToMarkdown(tempfile, originFilename, lineNumber, updateMode, config, tsLibConfig);
             const html = this.md.render(markdown);
 
             if (!this.webviewPanel || !this.webviewPanel.webview) { return; }
 
             const htmlContent = this.wrapHTMLContentInDoc(this.webviewPanel.webview, html);
-            
+
             this.lastMessage = {
                 command: 'update',
                 file: originFilename,
@@ -237,13 +237,13 @@ export class ShowPreviewCommand {
     private wrapHTMLContentInDoc(webview: vscode.Webview, html: string): { html: string, isEmpty: boolean } {
         const nonce = this.getNonce();
 
-        const githubMarkdownCssUri = getMediaUri(webview, 'github-markdown.css', true);
-        const highlightCssUri = getMediaUri(webview, 'highlight-github.min.css', true);
-        const globalCssUri = getMediaUri(webview, 'global.css', false);
+        const githubMarkdownCssUri = context.getMediaUri(webview, 'github-markdown.css', true);
+        const highlightCssUri = context.getMediaUri(webview, 'highlight-github.min.css', true);
+        const globalCssUri = context.getMediaUri(webview, 'global.css', false);
 
-        const pageJsUri = getMediaUri(webview, 'page.js', false);
-        const highlightJsUri = getMediaUri(webview, 'highlight.min.js', false);
-        const highlightTscJsUri = getMediaUri(webview, 'highlight-tsc.min.js', false);
+        const pageJsUri = context.getMediaUri(webview, 'page.js', false);
+        const highlightJsUri = context.getMediaUri(webview, 'highlight.min.js', false);
+        const highlightTscJsUri = context.getMediaUri(webview, 'highlight-tsc.min.js', false);
 
         html = html.trim();
         let isEmpty = html.length === 0;
@@ -305,13 +305,19 @@ export class ShowPreviewCommand {
         // eslint-disable-next-line @typescript-eslint/naming-convention
         deb_updatePreviewCursorChanged = asyncDebounce(this.updatePreviewCursorChanged.bind(this), 100, { leading: false, trailing: true, maxWait: 1000 }) as unknown as Function;
 
-        context.subscriptions.push(
+        context.vsContext.subscriptions.push(
             vscode.window.onDidChangeActiveColorTheme(theme => {
-                setTheme(theme.kind);
+                context.setTheme(theme.kind);
                 if (this.lastMessage) {
                     this.reload({ ...this.lastMessage });
                 }
             }),
+
+            // vscode.workspace.onDidChangeConfiguration(e => {
+            //     if (e.affectsConfiguration(configKeys.emptySignatures)) {
+            //         //previewPanel.refresh();
+            //     }
+            // }),
 
             vscode.workspace.onDidChangeTextDocument(() => {
                 // @ts-ignore

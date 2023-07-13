@@ -1,6 +1,5 @@
 import * as path from 'path';
 import * as ts from 'typescript';
-//import * as tsvfs from '@typescript/vfs';
 import {
     Application, DeclarationReflection, PageEvent, Reflection, LogLevel, ReflectionKind,
     ContainerReflection, Comment, SignatureReflection, ProjectReflection, DocumentationEntryPoint
@@ -36,7 +35,7 @@ type ConversionCache = {
     reflections: DeclarationReflectionInfo[]
 };
 
-const debugs: string[] = [];
+const duplicates: string[] = [];
 
 let lastConversion: ConversionCache;
 resetCache();
@@ -55,22 +54,11 @@ export function resetCache(): void {
         app: undefined as unknown as Application,
         reflections: [] as DeclarationReflectionInfo[]
     };
-    debugs.length = 0;
-
-    //tsvfs.createVirtualTypeScriptEnvironment(system, ["index.ts"], ts, compilerOpts).languageService.getSignatureHelpItems()?.items[0].
+    duplicates.length = 0;
 }
 
 const tscOptions = {
-    // target: ts.ScriptTarget.ESNext,
-    // module: ts.ModuleKind.ESNext,
-
     target: ts.ScriptTarget.ES5,
-
-    //module: ts.ModuleKind.,
-
-    //noLib: true,
-    //lib: ['ES2020', 'DOM', 'WebWorker', 'ScriptHost'],
-
     declaration: false,
     declarationMap: false,
     strict: true,
@@ -121,7 +109,7 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
 
     if (compile) {
         try {
-            debugs.length = 0;
+            duplicates.length = 0;
             log(`compiling file: ${originFilename}`);
 
             const normalizedSourceFile = BasePath.normalize(sourceFile);
@@ -383,17 +371,17 @@ export async function convertTypeDocToMarkdown(sourceFile: string, originFilenam
                                         }
 
                                         if (signatureFileIsValid) {
-                                            const dbg = `${startline}-${endline}`;
-                                            if (!debugs.includes(dbg)) {
-                                                debugs.push(dbg);
+                                            const ident = `${startline}-${endline}`;
+                                            if (!duplicates.includes(ident)) {
+                                                duplicates.push(ident);
                                                 compiledReflections.push({ startline, endline, model, comment, signature: sig });
                                             }
                                         }
                                     });
                                 } else {
-                                    const dbg = `${startline}-${endline}`;
-                                    if (!debugs.includes(dbg)) {
-                                        debugs.push(dbg);
+                                    const ident = `${startline}-${endline}`;
+                                    if (!duplicates.includes(ident)) {
+                                        duplicates.push(ident);
                                         compiledReflections.push({ startline, endline, model, comment, signature: undefined });
                                     }
                                 }

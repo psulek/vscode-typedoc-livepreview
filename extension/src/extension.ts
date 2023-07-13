@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { configKeys, contextIsInitialized, initContext, isTypescriptFile, setTheme, updateConfig, waitForContext } from './shared';
-import { previewPanel } from './previewCommand';
+import { isTypescriptFile, context } from './context';
+import { previewPanel } from './command';
 
-export function activate(context: vscode.ExtensionContext) {
-    initContext(context);
+export function activate(ctx: vscode.ExtensionContext) {
+    context.init(ctx);
 
     async function showPreview(column: vscode.ViewColumn, textEditor?: vscode.TextEditor, uri?: vscode.Uri) {
         const isValidFile = (uri && isTypescriptFile(uri)) || (textEditor && isTypescriptFile(textEditor.document));
@@ -11,9 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        if (!contextIsInitialized()) {
-            await waitForContext();
-        }
+        await context.waitForInit();
 
         previewPanel.show({
             viewColumn: column,
@@ -22,9 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
         });
     };
 
-    setTheme(vscode.window.activeColorTheme.kind);
-
-    context.subscriptions.push(
+    ctx.subscriptions.push(
         vscode.commands.registerCommand(
             'typedocPreview.showPreview',
             (uri: vscode.Uri) => showPreview(vscode.ViewColumn.Active, vscode.window.activeTextEditor, uri)
@@ -32,12 +28,12 @@ export function activate(context: vscode.ExtensionContext) {
 
         vscode.commands.registerCommand(
             'typedocPreview.showEmptySignatures',
-            () => updateConfig({ hideEmptySignatures: false })
+            () => context.updateConfig({ hideEmptySignatures: false })
         ),
 
         vscode.commands.registerCommand(
             'typedocPreview.hideEmptySignatures',
-            () => updateConfig({ hideEmptySignatures: true })
+            () => context.updateConfig({ hideEmptySignatures: true })
         ),
 
         vscode.commands.registerTextEditorCommand(
@@ -46,13 +42,17 @@ export function activate(context: vscode.ExtensionContext) {
 
         vscode.commands.registerTextEditorCommand(
             'typedocPreview.reloadPreview',
-            _ => previewPanel.reload()),
-
-        vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration(configKeys.emptySignatures)) {
-                //previewPanel.refresh();
-            }
-        })
+            async _ => {
+                await context.waitForInit();
+                previewPanel.reload();
+            }),
+        
+            vscode.commands.registerTextEditorCommand(
+            'typedocPreview.refreshTsLibCache',
+            async _ => {
+                await context.refreshTsLibCache();
+                previewPanel.reload();
+            })
     );
 }
 

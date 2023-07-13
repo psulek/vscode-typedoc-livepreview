@@ -17,6 +17,16 @@ export type PostMessage = {
     isUntitled: boolean;
 };
 
+export type TsLibCacheManifestFile = {
+    name: string;
+    size: number;
+};
+
+export type TsLibCacheManifest = {
+    tsVersion: string;
+    files: TsLibCacheManifestFile[];
+};
+
 export type ILogger = {
     log: (level: 'info' | 'warn' | 'error', msg: string, err?: Error) => void;
 };
