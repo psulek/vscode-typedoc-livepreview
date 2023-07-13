@@ -108,15 +108,22 @@
     "scripts": {
         "postinstall": "patch-package",
         "_install-vsix": "code --install-extension typedoc-live-preview-1.0.0.vsix",
-        "pretest": "npm run compile && npm run lint",
+        "__pretest": "esbuild ./src/test/runTest.ts ./src/test/suite/index.ts ./src/test/suite/extension.test.ts --outdir=out/test --format=cjs --platform=node",
+
+        "pretest-compile": "esbuild ./src/test/runTest.ts ./src/test/suite/index.ts ./src/test/suite/extension.test.ts --outdir=out/test --format=cjs --platform=node",
+        "copy-test-data": "cpx test-data/**/* out/test/suite/test-data",
+        "pretest": "rimraf out && npm run compile && npm run pretest-compile && npm run copy-test-data",
+        "test": "node ./out/test/runTest.js",
+
         "lint": "eslint src --ext ts",
         "test-cases": "node ./out/tests/tests.js",
         "create-patch": "npx patch-package typedoc && npx patch-package typedoc-plugin-markdown",
         "vscode:prepublish": "npm run esbuild-base -- --minify",
         "__vscode:prepublish": "npm run compile",
         "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
-        "esbuild-test": "esbuild ./src/converter.spec.ts --bundle --outfile=out/tests/tests.js --external:vscode-oniguruma --format=cjs --platform=node",
+        "__esbuild-test": "esbuild ./src/converter.spec.ts --bundle --outfile=out/tests/tests.js --external:vscode-oniguruma --format=cjs --platform=node",
         "compile": "npm run esbuild-base -- --sourcemap",
+        "compile-prod": "npm run esbuild-base -- --minify",
         "watch": "npm run esbuild-base -- --sourcemap --watch",
         "watch-tests": "npm run esbuild-test -- --sourcemap --watch",
         "package": "npx vsce package",
@@ -133,8 +140,9 @@
         "@types/vscode": "^1.79.0",
         "@typescript-eslint/eslint-plugin": "^5.59.8",
         "@typescript-eslint/parser": "^5.59.8",
-        "@vscode/test-electron": "^2.3.2",
+        "@vscode/test-electron": "~2.3.3",
         "chalk": "^4.0.0",
+        "cpx": "^1.5.0",
         "crlf-normalize": "1.0.19",
         "esbuild": "^0.18.11",
         "eslint": "^8.41.0",
@@ -142,7 +150,8 @@
         "glob": "^8.1.0",
         "glob-all": "3.3.1",
         "mocha": "^10.2.0",
-        "patch-package": "^7.0.0"
+        "patch-package": "^7.0.0",
+        "rimraf": "^5.0.1"
     },
     "dependencies": {
         "@typescript/vfs": "1.4.0",

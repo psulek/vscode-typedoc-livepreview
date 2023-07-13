@@ -38,6 +38,10 @@
             "problemMatcher": ["$tsc"],
             "label": "compile",
             "detail": "npm run esbuild-base -- --sourcemap"
+        },{
+            "type": "npm",
+            "script": "pretest",
+            "label": "pretest",
         }
     ]
 }

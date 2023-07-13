@@ -20,7 +20,7 @@ type TestCaseLineInfo = {
     end: number;
 };
 
-async function main() {
+export async function main() {
     const colorError = chalk.redBright;
 
     try {
@@ -190,4 +190,4 @@ function findFiles(globPattern: string | string[], options?: globOptions & { dot
 }
 
 
-main();
+//main();

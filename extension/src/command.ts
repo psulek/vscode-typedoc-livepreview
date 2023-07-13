@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import MarkdownIt from 'markdown-it';
-import { webViewPanelType, isTypescriptFile, VsCodeLogger, vsCodeLogger, context } from './context';
+import { webViewPanelType, isTypescriptFile, VsCodeLogger, context } from './context';
 import { asyncDebounce } from './utils';
 import { PreviewUpdateMode, TypescriptLibsConfig, convertTypeDocToMarkdown, getLastConvertedFile, isDifferentFile, resetCache } from './converter';
 import { PostMessage } from './types';
@@ -32,7 +32,7 @@ export class ShowPreviewCommand {
     private lastWorkspaceRoot: string | undefined;
 
     constructor() {
-        this.logger = vsCodeLogger;
+        this.logger = new VsCodeLogger();
         this.md = new MarkdownIt({
             html: false,
             breaks: true,

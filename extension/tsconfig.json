@@ -14,7 +14,8 @@
 	},
     "exclude": [
         "node_modules/typedoc/**/*",
-        "preview.ts"
+        "preview.ts",
+        "test-data"
     ],
     "ts-node": {
         "esm": true,

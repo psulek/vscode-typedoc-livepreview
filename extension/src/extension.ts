@@ -2,7 +2,13 @@ import * as vscode from 'vscode';
 import { isTypescriptFile, context } from './context';
 import { previewPanel } from './command';
 
-export function activate(ctx: vscode.ExtensionContext) {
+export * as converter from './converter';
+export * as utils from './utils';
+export * as types from './types';
+
+export const getContext = () => context;
+
+export async function activate(ctx: vscode.ExtensionContext) {
     context.init(ctx);
 
     async function showPreview(column: vscode.ViewColumn, textEditor?: vscode.TextEditor, uri?: vscode.Uri) {
@@ -46,8 +52,8 @@ export function activate(ctx: vscode.ExtensionContext) {
                 await context.waitForInit();
                 previewPanel.reload();
             }),
-        
-            vscode.commands.registerTextEditorCommand(
+
+        vscode.commands.registerTextEditorCommand(
             'typedocPreview.refreshTsLibCache',
             async _ => {
                 await context.refreshTsLibCache();

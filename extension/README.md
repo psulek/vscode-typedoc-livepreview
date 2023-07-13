@@ -19,12 +19,13 @@ Show or hide methods/fuctions with no documentation signatures.
 
 ## Commands
 
-| Command                                        | Keybinding       |
-| ---------------------------------------------- | ---------------- |
-| TypeDoc Live Preview: Open Preview to the Side | `Ctrl + Alt + P` |
-| TypeDoc Live Preview: Reload Preview           | none             |
-| TypeDoc Live Preview: Show empty signatures    | none             |
-| TypeDoc Live Preview: Hide empty signatures    | none             |
+| Command                                                         | Keybinding       |
+| ----------------------------------------------------------------| ---------------- |
+| TypeDoc Live Preview: Open Preview to the Side                  | `Ctrl + Alt + P` |
+| TypeDoc Live Preview: Reload Preview                            | none             |
+| TypeDoc Live Preview: Show empty signatures                     | none             |
+| TypeDoc Live Preview: Hide empty signatures                     | none             |
+| TypeDoc Live Preview: Refresh Typescript library types cache    | none             |
 
 ## Install
 

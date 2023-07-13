@@ -21,9 +21,11 @@ export class Context {
     private contextInitialized = false;
     private activeTheme: VsCodeTheme = 'light';
     private reloadingLibs = false;
+    private logger!: ILogger;
 
-    init(ctx: vscode.ExtensionContext): void {
+    init(ctx: vscode.ExtensionContext, logger?: ILogger): void {
         this.ctx = ctx;
+        this.logger = logger ?? new VsCodeLogger();
         this.setTheme(vscode.window.activeColorTheme.kind);
 
         (async () => {
@@ -43,14 +45,18 @@ export class Context {
         return this.ctx;
     }
 
+    get contextIsInitialized(): boolean {
+        return this.contextInitialized;
+    }
+
     async refreshTsLibCache(): Promise<void> {
         if (!this.reloadingLibs) {
             this.reloadingLibs = true;
             try {
-                vsCodeLogger.log('info', `Refreshing typescript library types cache...`);
+                this.logger.log('info', `Refreshing typescript library types cache...`);
                 await this.downloadTypescriptLibs(true);
             } catch (error) {
-                vsCodeLogger.log('error', `Refresh typescript library types cache failed.`, error as Error);
+                this.logger.log('error', `Refresh typescript library types cache failed.`, error as Error);
             } finally {
                 this.reloadingLibs = false;
             }
@@ -103,21 +109,21 @@ export class Context {
 
                         download = !libFilesValid;
                         if (download) {
-                            vsCodeLogger.log('info', `Found invalid typescript lib cache entry, refreshing entire cache...`);
+                            this.logger.log('info', `Found invalid typescript lib cache entry, refreshing entire cache...`);
                         }
                     }
                 } catch (error) {
-                    vsCodeLogger.log('error', `Failed to load/parse '${manifestFileUri.fsPath}' file!`, error as Error);
+                    this.logger.log('error', `Failed to load/parse '${manifestFileUri.fsPath}' file!`, error as Error);
                 }
             } else {
-                vsCodeLogger.log('info', `Could not find typescript lib cache manifest, refreshing entire cache...`);
+                this.logger.log('info', `Could not find typescript lib cache manifest, refreshing entire cache...`);
             }
 
             if (download) {
                 await deleteLibsFolder();
 
                 const prefix = `https://typescript.azureedge.net/cdn/${tsVersion}/typescript/lib/`;
-                vsCodeLogger.log('info', `Downloading basic typescript libs (CDN: ${prefix}) into extension folder`);
+                this.logger.log('info', `Downloading basic typescript libs (CDN: ${prefix}) into extension folder`);
 
                 this._tsLibraryFiles.length = 0;
 
@@ -148,15 +154,15 @@ export class Context {
                     };
                     await vscode.workspace.fs.writeFile(manifestFileUri, Buffer.from(JSON.stringify(versionFileContent, null, 2), 'utf8'));
 
-                    vsCodeLogger.log('info', `Successfully downloaded ${files.length} typescript libs (${prettyBytes(bytes)}).`);
+                    this.logger.log('info', `Successfully downloaded ${files.length} typescript libs (${prettyBytes(bytes)}).`);
                 } else {
-                    vsCodeLogger.log('warn', `Downloaded only ${valid} out of ${libs.length} required typescript libs.`);
+                    this.logger.log('warn', `Downloaded only ${valid} out of ${libs.length} required typescript libs.`);
                 }
             } else {
-                vsCodeLogger.log('info', `Found local cache of typescript libs at path: ` + tsLibsPathUri.fsPath);
+                this.logger.log('info', `Found local cache of typescript libs at path: ` + tsLibsPathUri.fsPath);
             }
         } catch (error) {
-            vsCodeLogger.log('error', 'Failed to download typescript libs from CDN.', error as Error);
+            this.logger.log('error', 'Failed to download typescript libs from CDN.', error as Error);
         }
     }
 
@@ -201,19 +207,19 @@ export class Context {
     }
 }
 
-export class VsCodeLogger implements ILogger {
-    panel: vscode.OutputChannel | undefined;
+let vsCodeLoggerPanel: vscode.OutputChannel | undefined;
 
+export class VsCodeLogger implements ILogger {
     log(level: 'info' | 'warn' | 'error', msg: string, err?: Error | undefined): void {
-        if (!this.panel) {
-            this.panel = vscode.window.createOutputChannel('TypeDoc Live Preview');
+        if (!vsCodeLoggerPanel) {
+            vsCodeLoggerPanel = vscode.window.createOutputChannel('TypeDoc Live Preview');
         }
 
-        this.panel.appendLine(`[${level}] ${msg}` + (err ? `[${err.name}] ${err.message} ${err.stack}` : ''));
+        vsCodeLoggerPanel.appendLine(`[${level}] ${msg}` + (err ? `[${err.name}] ${err.message} ${err.stack}` : ''));
     }
 }
 
-export const vsCodeLogger = new VsCodeLogger();
+//export const vsCodeLogger = new VsCodeLogger();
 
 export function isTypescriptFile(uriOrDocument: vscode.Uri | vscode.TextDocument): boolean {
     let uri: vscode.Uri;
