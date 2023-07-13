@@ -1,3 +1,0 @@
-# Interface: Dog
-
-Dog interface

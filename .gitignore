@@ -63,4 +63,7 @@ typings/
 # dotenv environment variables file
 .env
 
-extension/preview.ts
+.vscode-test/
+*.vsix
+preview.ts
+tslibs
