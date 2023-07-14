@@ -35,15 +35,22 @@ Show or hide methods/fuctions with no documentation signatures.
 1. Click **Reload**, if required
 
 
-## Settings
+## Configuration
 
 This extension contributes the following settings:
 
-| Property                            | Description                                      | Default | Values |
+| Setting                             | Description                                      | Default | Values |
 | ----------------------------------- | ------------------------------------------------ | ------- | ------ |
 | typedoclivepreview.emptySignatures  | Show or hide empty methods/fuctions signatures   | `show`  | `show`,`hide` |
+
+## Release Notes
+
+[Have a look at our CHANGELOG][changelog] to get the details of all changes.
 
 
 ### 1.0.0
 
 Initial release of `TypeDoc Live Preview` extension
+
+<!-- Links -->
+[changelog]: https://github.com/psulek/vscode-typedoc-livepreview/blob/main/CHANGELOG.md

@@ -23,3 +23,5 @@ media/test.html
 out/tests/**
 out/test/**
 tslibs
+
+docs/**
