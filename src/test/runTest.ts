@@ -16,6 +16,7 @@ async function main() {
         await runTests({
             extensionDevelopmentPath,
             extensionTestsPath,
+            version: "1.80.0",
             launchArgs: ["--disable-extensions"]
 });
     } catch (err) {

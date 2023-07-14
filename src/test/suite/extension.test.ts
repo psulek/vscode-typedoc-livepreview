@@ -33,7 +33,10 @@ suite('Extension Test Suite', function() {
 
     let extensionContext: vscode.ExtensionContext;
     suiteSetup(async () => {
-        const extId = 'psulek.typedoc-live-preview';
+        const pkg = fse.readJsonSync(path.resolve('../../package.json'));
+        
+        //const extId = 'psulek.typedoc-live-preview';
+        const extId = `${pkg.publisher}.${pkg.name}`;
         const extension = vscode.extensions.getExtension(extId);
         assert.notEqual(extension, undefined, `Could not get extension '${extId}' !`);
         await extension!.activate();

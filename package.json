@@ -1,17 +1,34 @@
 {
     "name": "typedoc-live-preview",
     "displayName": "TypeDoc Live Preview",
-    "description": "Live preview of typescript documentation (typedoc)",
+    "description": "Display live preview of typescript documentation (tsdoc or typedoc)",
     "version": "1.0.0",
-    "publisher": "psulek",
+    "publisher": "psulek-solo",
+    "license": "MIT",
+    "author": "Peter Šulek",
+    "icon": "docs/logo.png",
     "repository": {
         "type": "git",
         "url": "https://github.com/psulek/vscode-typedoc-livepreview"
     },
+    "bugs": {
+        "url": "https://github.com/psulek/vscode-typedoc-livepreview/issues"
+    },
+    "homepage": "https://github.com/psulek/vscode-typedoc-livepreview/blob/main/README.md",
     "engines": {
         "vscode": "^1.79.0"
     },
+    "keywords": [
+        "typescript",
+        "tsdoc",
+        "typedoc",
+        "jsdoc",
+        "tsc",
+        "preview"
+    ],
     "categories": [
+        "Visualization",
+        "Programming Languages",
         "Other"
     ],
     "activationEvents": [
@@ -19,8 +36,7 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
-        "commands": [
-            {
+        "commands": [{
                 "category": "TypeDoc Live Preview",
                 "command": "typedocPreview.showPreview",
                 "title": "Open TypeDoc Preview"
@@ -55,16 +71,13 @@
                 }
             }
         ],
-        "keybindings": [
-            {
-                "command": "typedocPreview.showPreviewToSide",
-                "key": "ctrl+alt+p",
-                "when": "resourceLangId == typescript"
-            }
-        ],
+        "keybindings": [{
+            "command": "typedocPreview.showPreviewToSide",
+            "key": "ctrl+alt+p",
+            "when": "resourceLangId == typescript"
+        }],
         "menus": {
-            "commandPalette": [
-                {
+            "commandPalette": [{
                     "command": "typedocPreview.showPreview",
                     "when": "false",
                     "group": "navigation"
@@ -74,46 +87,44 @@
                     "group": "navigation"
                 }
             ],
-            "editor/title": [
-                {
-                    "command": "typedocPreview.showPreviewToSide",
-                    "group": "navigation",
-                    "when": "editorLangId == typescript"
-                }
-            ]
+            "editor/title": [{
+                "command": "typedocPreview.showPreviewToSide",
+                "group": "navigation",
+                "when": "editorLangId == typescript"
+            }]
         },
-        "configuration": [
-            {
-                "id": "common",
-                "title": "TypeDoc Live Preview",
-                "properties": {
-                    "typedoclivepreview.emptySignatures": {
-                        "type": "string",
-                        "enum": [
-                            "show",
-                            "hide"
-                        ],
-                        "markdownEnumDescriptions": [
-                            "`show` - shows signatures even when they are empty",
-                            "`hide` - do not show empty signatures"
-                        ],
-                        "default": "show",
-                        "description": "Show empty signatures",
-                        "scope": "window"
-                    }
+        "configuration": [{
+            "id": "common",
+            "title": "TypeDoc Live Preview",
+            "properties": {
+                "typedoclivepreview.emptySignatures": {
+                    "type": "string",
+                    "enum": [
+                        "show",
+                        "hide"
+                    ],
+                    "markdownEnumDescriptions": [
+                        "`show` - shows signatures even when they are empty",
+                        "`hide` - do not show empty signatures"
+                    ],
+                    "default": "show",
+                    "description": "Show empty signatures",
+                    "scope": "window"
                 }
             }
-        ]
+        }]
     },
     "scripts": {
         "postinstall": "patch-package",
         "_install-vsix": "code --install-extension typedoc-live-preview-1.0.0.vsix",
         "__pretest": "esbuild ./src/test/runTest.ts ./src/test/suite/index.ts ./src/test/suite/extension.test.ts --outdir=out/test --format=cjs --platform=node",
 
-        "pretest-compile": "esbuild ./src/test/runTest.ts ./src/test/suite/index.ts ./src/test/suite/extension.test.ts --outdir=out/test --format=cjs --platform=node",
+        "pretest-compile": "esbuild ./src/test/cliTest.ts ./src/test/runTest.ts ./src/test/suite/index.ts ./src/test/suite/extension.test.ts --outdir=out/test --format=cjs --platform=node",
         "copy-test-data": "cpx test-data/**/* out/test/suite/test-data",
         "pretest": "rimraf out && npm run compile && npm run pretest-compile && npm run copy-test-data",
         "test": "node ./out/test/runTest.js",
+
+        "cli-test": "npm run pretest && node ./out/test/cliTest.js",
 
         "lint": "eslint src --ext ts",
         "test-cases": "node ./out/tests/tests.js",

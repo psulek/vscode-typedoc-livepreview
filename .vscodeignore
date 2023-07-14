@@ -23,5 +23,6 @@ media/test.html
 out/tests/**
 out/test/**
 tslibs
-
-docs/**
+internal/**
+test-data/**
+docs/**/*.svg
