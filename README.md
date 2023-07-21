@@ -34,6 +34,9 @@ Show or hide methods/fuctions with no documentation signatures.
 1. Click **Install**
 1. Click **Reload**, if required
 
+### Marketplace
+Marketplace extension page - [TypeDoc Live Preview][marketplace_ext]
+
 
 ## Configuration
 
@@ -52,6 +55,7 @@ Initial release of `TypeDoc Live Preview` extension
 
 <!-- Links -->
 [changelog]: https://github.com/psulek/vscode-typedoc-livepreview/blob/main/CHANGELOG.md
+[marketplace_ext]: https://marketplace.visualstudio.com/items?itemName=psulek-solo.typedoc-live-preview
 
 <!-- Demo images -->
 [demo-1]: https://github.com/psulek/vscode-typedoc-livepreview/blob/main/docs/demo/demo1.gif?raw=true
