@@ -52,6 +52,21 @@
             "problemMatcher": [],
             "label": "npm: package",
             "detail": "npx vsce package"
+        },
+        {
+            "type": "npm",
+            "script": "test",
+            "group": "test",
+            "problemMatcher": [],
+            "label": "npm: test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
         }
     ]
 }

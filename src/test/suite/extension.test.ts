@@ -70,7 +70,7 @@ async function runTests() {
             libs: ctx.tsLibraryFiles
         };
 
-        const filterTests = '';
+        const filterTests = 'tc018.mtsx';
         // const filterTests = 'tc010.ts';
         // const filterTests = 'tc014.ts';
         // const filterTests = 'tc002.ts';
@@ -80,7 +80,8 @@ async function runTests() {
         const colorWarn = chalk.yellow;
         const colorSuccess = chalk.green;
 
-        const testCases = utils.arraySortBy(await findFiles('*.ts', { cwd: dirTestCases }), x => x, 'asc');
+        const fileMask = '**/*.{ts,tsx,mts,mtsx}';
+        const testCases = utils.arraySortBy(await findFiles(fileMask, { cwd: dirTestCases }), x => x, 'asc');
         const totalCount = testCases.length;
         log('Found ' + colorNumber(totalCount) + ' test cases: (' + colorFile(testCases.join(', ')) + ')\n');
 

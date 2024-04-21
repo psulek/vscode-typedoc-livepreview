@@ -2,7 +2,7 @@
     "name": "typedoc-live-preview",
     "displayName": "TypeDoc Live Preview",
     "description": "Display live preview of typescript documentation (tsdoc or typedoc)",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publisher": "psulek-solo",
     "license": "MIT",
     "author": "Peter Šulek",
@@ -32,7 +32,8 @@
         "Other"
     ],
     "activationEvents": [
-        "onLanguage:typescript"
+        "onLanguage:typescript",
+        "onLanguage:typescriptreact"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -74,7 +75,7 @@
         "keybindings": [{
             "command": "typedocPreview.showPreviewToSide",
             "key": "ctrl+alt+p",
-            "when": "resourceLangId == typescript"
+            "when": "resourceLangId == typescript || resourceLangId == typescriptreact"
         }],
         "menus": {
             "commandPalette": [{
@@ -90,7 +91,7 @@
             "editor/title": [{
                 "command": "typedocPreview.showPreviewToSide",
                 "group": "navigation",
-                "when": "editorLangId == typescript"
+                "when": " editorLangId == typescript || editorLangId == typescriptreact"
             }]
         },
         "configuration": [{
@@ -128,14 +129,16 @@
 
         "lint": "eslint src --ext ts",
         "test-cases": "node ./out/tests/tests.js",
+        "single-test": "npm run build-single-test && node out/tests/singletest.js",
         "create-patch": "npx patch-package typedoc && npx patch-package typedoc-plugin-markdown",
         "vscode:prepublish": "npm run esbuild-base -- --minify",
         "__vscode:prepublish": "npm run compile",
         "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
         "__esbuild-test": "esbuild ./src/converter.spec.ts --bundle --outfile=out/tests/tests.js --external:vscode-oniguruma --format=cjs --platform=node",
+        "build-single-test": "esbuild ./src/test/singleTest.ts --bundle --outfile=out/tests/singletest.js --external:vscode-oniguruma --format=cjs --platform=node",
         "compile": "npm run esbuild-base -- --sourcemap",
         "compile-prod": "npm run esbuild-base -- --minify",
-        "watch": "npm run esbuild-base -- --sourcemap --watch",
+        "watch": "npm run esbuild-base -- --sourcemap",
         "watch-tests": "npm run esbuild-test -- --sourcemap --watch",
         "package": "npx vsce package",
         "publish": "npx vsce publish"
@@ -151,7 +154,7 @@
         "@types/vscode": "^1.79.0",
         "@typescript-eslint/eslint-plugin": "^5.59.8",
         "@typescript-eslint/parser": "^5.59.8",
-        "@vscode/test-electron": "~2.3.3",
+        "@vscode/test-electron": "2.3.9",
         "chalk": "^4.0.0",
         "cpx": "^1.5.0",
         "crlf-normalize": "1.0.19",
