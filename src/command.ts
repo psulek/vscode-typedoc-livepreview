@@ -297,7 +297,8 @@ export class ShowPreviewCommand {
 
     private isSupportedFileOpened(textEditor?: vscode.TextEditor): boolean {
         const activeTextEditor = textEditor ?? vscode.window.activeTextEditor;
-        return activeTextEditor?.document.languageId === 'typescript';
+        const languageId = activeTextEditor?.document.languageId;
+        return languageId === 'typescript' || languageId === 'typescriptreact';
     }
 
     private registerEvents() {

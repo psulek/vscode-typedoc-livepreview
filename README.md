@@ -49,6 +49,9 @@ This extension contributes the following settings:
 ## Release Notes
 [Have a look at our CHANGELOG][changelog] to get the details of all changes.
 
+### 1.0.1
+Added support for `Typescript react` (tsx) files
+
 ### 1.0.0
 
 Initial release of `TypeDoc Live Preview` extension

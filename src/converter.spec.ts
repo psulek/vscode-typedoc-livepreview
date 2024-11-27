@@ -28,7 +28,7 @@ export async function main() {
         const dirTestCases = path.join(cwd, '../sampleapp/src/');
         const dirMarkdowns = path.join(cwd, '../sampleapp/mds/');
 
-        const filterTests = '';
+        const filterTests = 'tc018.mtsx';
         // const filterTests = 'tc010.ts';
         // const filterTests = 'tc014.ts';
         // const filterTests = 'tc002.ts';
@@ -38,7 +38,8 @@ export async function main() {
         const colorWarn = chalk.yellow;
         const colorSuccess = chalk.green;
 
-        const testCases = arraySortBy(await findFiles('*.ts', { cwd: dirTestCases }), x => x, 'asc');
+        const fileMask = '**/*.{ts,tsx,mts,mtsx}';
+        const testCases = arraySortBy(await findFiles(fileMask, { cwd: dirTestCases }), x => x, 'asc');
         const totalCount = testCases.length;
         log('Found ' + colorNumber(totalCount) + ' test cases: (' + colorFile(testCases.join(', ')) + ')\n');
 
